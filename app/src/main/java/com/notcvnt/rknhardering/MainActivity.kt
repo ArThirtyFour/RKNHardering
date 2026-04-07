@@ -1,6 +1,8 @@
 package com.notcvnt.rknhardering
 
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -23,11 +25,15 @@ import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.Verdict
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var btnRunCheck: MaterialButton
+    private lateinit var btnStopCheck: MaterialButton
+    private lateinit var linkGithub: TextView
+    private var checkJob: Job? = null
     private lateinit var progressBar: ProgressBar
     private lateinit var cardGeoIp: MaterialCardView
     private lateinit var cardDirect: MaterialCardView
@@ -62,13 +68,21 @@ class MainActivity : AppCompatActivity() {
 
         bindViews()
 
+        linkGithub.setOnClickListener {
+            openGithubRepo()
+        }
         btnRunCheck.setOnClickListener {
             runCheck()
+        }
+        btnStopCheck.setOnClickListener {
+            checkJob?.cancel()
         }
     }
 
     private fun bindViews() {
         btnRunCheck = findViewById(R.id.btnRunCheck)
+        btnStopCheck = findViewById(R.id.btnStopCheck)
+        linkGithub = findViewById(R.id.linkGithub)
         progressBar = findViewById(R.id.progressBar)
         cardGeoIp = findViewById(R.id.cardGeoIp)
         cardDirect = findViewById(R.id.cardDirect)
@@ -92,8 +106,13 @@ class MainActivity : AppCompatActivity() {
         textVerdict = findViewById(R.id.textVerdict)
     }
 
+    private fun openGithubRepo() {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.github_repo_url))))
+    }
+
     private fun runCheck() {
         btnRunCheck.isEnabled = false
+        btnStopCheck.visibility = View.VISIBLE
         progressBar.visibility = View.VISIBLE
         hideCards()
 
@@ -106,15 +125,26 @@ class MainActivity : AppCompatActivity() {
         textBypassProgress.text = "Подготовка..."
         findingsBypass.removeAllViews()
 
-        lifecycleScope.launch {
-            val result = VpnCheckRunner.run(this@MainActivity) { progress ->
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    textBypassProgress.text = "${progress.phase}: ${progress.detail}"
+        checkJob = lifecycleScope.launch {
+            try {
+                val result = VpnCheckRunner.run(this@MainActivity) { progress ->
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        textBypassProgress.text = "${progress.phase}: ${progress.detail}"
+                    }
                 }
+                progressBar.visibility = View.GONE
+                btnStopCheck.visibility = View.GONE
+                btnRunCheck.isEnabled = true
+                displayResult(result)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                progressBar.visibility = View.GONE
+                btnStopCheck.visibility = View.GONE
+                btnRunCheck.isEnabled = true
+                textBypassProgress.visibility = View.GONE
+                statusBypass.text = "Отменено"
+                statusBypass.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.verdict_yellow))
+                throw e
             }
-            progressBar.visibility = View.GONE
-            btnRunCheck.isEnabled = true
-            displayResult(result)
         }
     }
 

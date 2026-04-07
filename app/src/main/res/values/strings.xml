@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">RKNHardering</string>
+    <string name="github_repo_label">GitHub</string>
+    <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
 </resources>
