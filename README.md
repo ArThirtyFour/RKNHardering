@@ -67,6 +67,34 @@ API: `ConnectivityManager.getNetworkCapabilities(activeNetwork)`
 
 Известные порты: `1080`, `9000`, `5555` (SOCKS), `8080`, `3128` (HTTP proxy), `9050`, `9150` (Tor).
 
+#### 2.3 Известные VPN-приложения (`checkKnownVpnApps`)
+
+Проверяет наличие установленных пакетов через `PackageManager.getPackageInfo`. Факт установки фиксируется независимо от того, активно ли приложение в данный момент.
+
+Все перечисленные ниже приложения на Android создают TUN-интерфейс `tun0` через `VpnService` API (имя назначается ядром, не приложением) — поэтому обнаружение по имени интерфейса не даёт дополнительной информации. Проверка по пакету надёжнее.
+
+| Пакет | Приложение |
+|-------|-----------|
+| `com.v2ray.ang` | v2rayNG |
+| `io.nekohasekai.sfa` | sing-box |
+| `app.hiddify.com` | Hiddify |
+| `com.github.metacubex.clash.meta` | ClashMeta for Android |
+| `com.github.shadowsocks` | Shadowsocks |
+| `com.github.shadowsocks.tv` | Shadowsocks TV |
+| `com.happproxy` | HAPP VPN |
+| `io.github.saeeddev94.xray` | XrayNG |
+| `moe.nb4a` | NekoBox |
+| `io.github.dovecoteescapee.byedpi` | ByeDPI |
+| `com.romanvht.byebyedpi` | ByeByeDPI |
+| `org.outline.android.client` | Outline |
+| `com.psiphon3` | Psiphon |
+| `org.getlantern.lantern` | Lantern |
+| `com.wireguard.android` | WireGuard |
+| `com.strongswan.android` | strongSwan |
+| `org.torproject.android` | Tor Browser |
+| `info.guardianproject.orfox` | Orbot |
+| `org.torproject.torbrowser` | Tor Browser (official) |
+
 ---
 
 ### 3. Косвенные признаки (`IndirectSignsChecker`)
