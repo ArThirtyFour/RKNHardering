@@ -25,12 +25,14 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.notcvnt.rknhardering.checker.BypassChecker
 import com.notcvnt.rknhardering.checker.VpnCheckRunner
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.model.IpCheckerGroupResult
+import com.notcvnt.rknhardering.model.IpCheckerResponse
+import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.Verdict
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -44,19 +46,24 @@ class MainActivity : AppCompatActivity() {
     private var checkJob: Job? = null
     private lateinit var progressBar: ProgressBar
     private lateinit var cardGeoIp: MaterialCardView
+    private lateinit var cardIpComparison: MaterialCardView
     private lateinit var cardDirect: MaterialCardView
     private lateinit var cardIndirect: MaterialCardView
     private lateinit var cardLocation: MaterialCardView
     private lateinit var cardVerdict: MaterialCardView
     private lateinit var iconGeoIp: ImageView
+    private lateinit var iconIpComparison: ImageView
     private lateinit var iconDirect: ImageView
     private lateinit var iconIndirect: ImageView
     private lateinit var iconLocation: ImageView
     private lateinit var statusGeoIp: TextView
+    private lateinit var statusIpComparison: TextView
     private lateinit var statusDirect: TextView
     private lateinit var statusIndirect: TextView
     private lateinit var statusLocation: TextView
+    private lateinit var textIpComparisonSummary: TextView
     private lateinit var findingsGeoIp: LinearLayout
+    private lateinit var ipComparisonGroups: LinearLayout
     private lateinit var findingsDirect: LinearLayout
     private lateinit var findingsIndirect: LinearLayout
     private lateinit var findingsLocation: LinearLayout
@@ -108,19 +115,24 @@ class MainActivity : AppCompatActivity() {
         linkGithub = findViewById(R.id.linkGithub)
         progressBar = findViewById(R.id.progressBar)
         cardGeoIp = findViewById(R.id.cardGeoIp)
+        cardIpComparison = findViewById(R.id.cardIpComparison)
         cardDirect = findViewById(R.id.cardDirect)
         cardIndirect = findViewById(R.id.cardIndirect)
         cardLocation = findViewById(R.id.cardLocation)
         cardVerdict = findViewById(R.id.cardVerdict)
         iconGeoIp = findViewById(R.id.iconGeoIp)
+        iconIpComparison = findViewById(R.id.iconIpComparison)
         iconDirect = findViewById(R.id.iconDirect)
         iconIndirect = findViewById(R.id.iconIndirect)
         iconLocation = findViewById(R.id.iconLocation)
         statusGeoIp = findViewById(R.id.statusGeoIp)
+        statusIpComparison = findViewById(R.id.statusIpComparison)
         statusDirect = findViewById(R.id.statusDirect)
         statusIndirect = findViewById(R.id.statusIndirect)
         statusLocation = findViewById(R.id.statusLocation)
+        textIpComparisonSummary = findViewById(R.id.textIpComparisonSummary)
         findingsGeoIp = findViewById(R.id.findingsGeoIp)
+        ipComparisonGroups = findViewById(R.id.ipComparisonGroups)
         findingsDirect = findViewById(R.id.findingsDirect)
         findingsIndirect = findViewById(R.id.findingsIndirect)
         findingsLocation = findViewById(R.id.findingsLocation)
@@ -265,6 +277,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideCards() {
         cardGeoIp.visibility = View.GONE
+        cardIpComparison.visibility = View.GONE
         cardDirect.visibility = View.GONE
         cardIndirect.visibility = View.GONE
         cardLocation.visibility = View.GONE
@@ -274,6 +287,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun displayResult(result: CheckResult) {
         displayCategory(result.geoIp, cardGeoIp, iconGeoIp, statusGeoIp, findingsGeoIp)
+        displayIpComparison(result.ipComparison)
         displayCategory(result.directSigns, cardDirect, iconDirect, statusDirect, findingsDirect)
         displayCategory(result.indirectSigns, cardIndirect, iconIndirect, statusIndirect, findingsIndirect)
         displayCategory(result.locationSignals, cardLocation, iconLocation, statusLocation, findingsLocation)
@@ -290,19 +304,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         card.visibility = View.VISIBLE
 
-        if (category.detected) {
-            icon.setImageResource(R.drawable.ic_warning)
-            status.text = "Обнаружено"
-            status.setTextColor(ContextCompat.getColor(this, R.color.status_red))
-        } else if (category.needsReview) {
-            icon.setImageResource(R.drawable.ic_help)
-            status.text = "Требует проверки"
-            status.setTextColor(ContextCompat.getColor(this, R.color.status_amber))
-        } else {
-            icon.setImageResource(R.drawable.ic_check_circle)
-            status.text = "Чисто"
-            status.setTextColor(ContextCompat.getColor(this, R.color.status_green))
-        }
+        bindCardStatus(category.detected, category.needsReview, icon, status)
 
         // GeoIP card: info fields (source==null) go to the key-value section,
         // actual checks (source!=null) go to the findings list
@@ -334,6 +336,26 @@ class MainActivity : AppCompatActivity() {
             if (finding.description.startsWith("network_mcc_ru:")) continue
             findingsContainer.addView(createFindingView(finding))
         }
+    }
+
+    private fun displayIpComparison(result: IpComparisonResult) {
+        cardIpComparison.visibility = View.VISIBLE
+        bindCardStatus(result.detected, result.needsReview, iconIpComparison, statusIpComparison)
+        textIpComparisonSummary.text = result.summary
+
+        ipComparisonGroups.removeAllViews()
+        ipComparisonGroups.addView(
+            createIpCheckerGroupView(
+                group = result.ruGroup,
+                expanded = result.detected || result.needsReview || result.ruGroup.needsReview,
+            ),
+        )
+        ipComparisonGroups.addView(
+            createIpCheckerGroupView(
+                group = result.nonRuGroup,
+                expanded = result.detected || result.needsReview || result.nonRuGroup.detected,
+            ),
+        )
     }
 
     private fun createFindingView(finding: Finding): View {
@@ -413,27 +435,187 @@ class MainActivity : AppCompatActivity() {
         return row
     }
 
+    private fun createIpCheckerGroupView(
+        group: IpCheckerGroupResult,
+        expanded: Boolean,
+    ): View {
+        val card = MaterialCardView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = 8.dp
+            }
+            radius = 14.dp.toFloat()
+            strokeWidth = 1.dp
+            strokeColor = ContextCompat.getColor(this@MainActivity, R.color.md_outline_variant)
+            setCardBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.md_surface))
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12.dp, 12.dp, 12.dp, 12.dp)
+        }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val title = TextView(this).apply {
+            text = group.title
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val status = TextView(this).apply {
+            text = group.statusLabel
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(this@MainActivity, statusColorRes(group.detected, group.needsReview)))
+        }
+
+        val toggle = TextView(this).apply {
+            text = if (expanded) "▼" else "▶"
+            textSize = 12f
+            setPadding(8.dp, 0, 0, 0)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+
+        val summary = TextView(this).apply {
+            text = group.summary
+            textSize = 13f
+            setPadding(0, 6.dp, 0, 0)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+
+        val details = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = if (expanded) View.VISIBLE else View.GONE
+            setPadding(0, 8.dp, 0, 0)
+        }
+        group.responses.forEach { response ->
+            details.addView(createIpCheckerResponseView(response))
+        }
+
+        header.addView(title)
+        header.addView(status)
+        header.addView(toggle)
+
+        val toggleDetails = {
+            val nextExpanded = details.visibility != View.VISIBLE
+            details.visibility = if (nextExpanded) View.VISIBLE else View.GONE
+            toggle.text = if (nextExpanded) "▼" else "▶"
+        }
+        header.setOnClickListener { toggleDetails() }
+        summary.setOnClickListener { toggleDetails() }
+
+        container.addView(header)
+        container.addView(summary)
+        container.addView(details)
+        card.addView(container)
+        return card
+    }
+
+    private fun createIpCheckerResponseView(response: IpCheckerResponse): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8.dp, 0, 8.dp)
+        }
+
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val label = TextView(this).apply {
+            text = response.label
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val value = TextView(this).apply {
+            text = response.ip ?: "Ошибка"
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (response.ip != null) R.color.status_green else R.color.status_amber,
+                ),
+            )
+        }
+
+        val url = TextView(this).apply {
+            text = response.url
+            textSize = 12f
+            setPadding(0, 4.dp, 0, 0)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+
+        topRow.addView(label)
+        topRow.addView(value)
+        container.addView(topRow)
+        container.addView(url)
+
+        if (!response.error.isNullOrBlank()) {
+            container.addView(
+                TextView(this).apply {
+                    text = response.error
+                    textSize = 12f
+                    setPadding(0, 2.dp, 0, 0)
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_amber))
+                },
+            )
+        }
+
+        return container
+    }
+
     private fun displayBypass(bypass: BypassResult) {
         cardBypass.visibility = View.VISIBLE
         textBypassProgress.visibility = View.GONE
 
-        if (bypass.detected) {
-            iconBypass.setImageResource(R.drawable.ic_warning)
-            statusBypass.text = "Обнаружено"
-            statusBypass.setTextColor(ContextCompat.getColor(this, R.color.status_red))
-        } else if (bypass.needsReview) {
-            iconBypass.setImageResource(R.drawable.ic_help)
-            statusBypass.text = "Требует проверки"
-            statusBypass.setTextColor(ContextCompat.getColor(this, R.color.status_amber))
-        } else {
-            iconBypass.setImageResource(R.drawable.ic_check_circle)
-            statusBypass.text = "Чисто"
-            statusBypass.setTextColor(ContextCompat.getColor(this, R.color.status_green))
-        }
+        bindCardStatus(bypass.detected, bypass.needsReview, iconBypass, statusBypass)
 
         findingsBypass.removeAllViews()
         for (finding in bypass.findings) {
             findingsBypass.addView(createFindingView(finding))
+        }
+    }
+
+    private fun bindCardStatus(
+        detected: Boolean,
+        needsReview: Boolean,
+        icon: ImageView,
+        status: TextView,
+    ) {
+        when {
+            detected -> {
+                icon.setImageResource(R.drawable.ic_warning)
+                status.text = "Обнаружено"
+            }
+            needsReview -> {
+                icon.setImageResource(R.drawable.ic_help)
+                status.text = "Требует проверки"
+            }
+            else -> {
+                icon.setImageResource(R.drawable.ic_check_circle)
+                status.text = "Чисто"
+            }
+        }
+        status.setTextColor(ContextCompat.getColor(this, statusColorRes(detected, needsReview)))
+    }
+
+    private fun statusColorRes(detected: Boolean, needsReview: Boolean): Int {
+        return when {
+            detected -> R.color.status_red
+            needsReview -> R.color.status_amber
+            else -> R.color.status_green
         }
     }
 

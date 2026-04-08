@@ -100,8 +100,40 @@ data class BypassResult(
     val evidence: List<EvidenceItem> = emptyList(),
 )
 
+enum class IpCheckerScope {
+    RU,
+    NON_RU,
+}
+
+data class IpCheckerResponse(
+    val label: String,
+    val url: String,
+    val scope: IpCheckerScope,
+    val ip: String? = null,
+    val error: String? = null,
+)
+
+data class IpCheckerGroupResult(
+    val title: String,
+    val detected: Boolean,
+    val needsReview: Boolean = false,
+    val statusLabel: String,
+    val summary: String,
+    val canonicalIp: String? = null,
+    val responses: List<IpCheckerResponse>,
+)
+
+data class IpComparisonResult(
+    val detected: Boolean,
+    val needsReview: Boolean = false,
+    val summary: String,
+    val ruGroup: IpCheckerGroupResult,
+    val nonRuGroup: IpCheckerGroupResult,
+)
+
 data class CheckResult(
     val geoIp: CategoryResult,
+    val ipComparison: IpComparisonResult,
     val directSigns: CategoryResult,
     val indirectSigns: CategoryResult,
     val locationSignals: CategoryResult,

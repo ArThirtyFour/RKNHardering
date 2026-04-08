@@ -12,12 +12,14 @@ object VpnCheckRunner {
         onBypassProgress: (suspend (BypassChecker.Progress) -> Unit)? = null,
     ): CheckResult = coroutineScope {
         val geoIpDeferred = async { GeoIpChecker.check() }
+        val ipComparisonDeferred = async { IpComparisonChecker.check() }
         val directDeferred = async { DirectSignsChecker.check(context) }
         val indirectDeferred = async { IndirectSignsChecker.check(context) }
         val locationDeferred = async { LocationSignalsChecker.check(context) }
         val bypassDeferred = async { BypassChecker.check(context = context, onProgress = onBypassProgress) }
 
         val geoIp = geoIpDeferred.await()
+        val ipComparison = ipComparisonDeferred.await()
         val directSigns = directDeferred.await()
         val indirectSigns = indirectDeferred.await()
         val locationSignals = locationDeferred.await()
@@ -33,6 +35,7 @@ object VpnCheckRunner {
 
         CheckResult(
             geoIp = geoIp,
+            ipComparison = ipComparison,
             directSigns = directSigns,
             indirectSigns = indirectSigns,
             locationSignals = locationSignals,
