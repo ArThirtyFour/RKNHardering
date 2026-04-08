@@ -63,7 +63,8 @@
                 android:text="Запустить проверку"
                 android:textAllCaps="false"
                 app:icon="@drawable/ic_check_circle"
-                app:iconGravity="textStart" />
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorOnPrimary" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStopCheck"
