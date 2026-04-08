@@ -27,17 +27,10 @@ object IndirectSignsChecker {
 
     internal enum class DnsClassification {
         LOOPBACK,
-        PRIVATE_LAN,
-        PRIVATE_TUNNEL,
+        PRIVATE_NETWORK,
         KNOWN_PUBLIC_RESOLVER,
         LINK_LOCAL,
         OTHER_PUBLIC,
-    }
-
-    internal enum class DnsSignalStatus {
-        CLEAR,
-        NEEDS_REVIEW,
-        DETECTED,
     }
 
     internal data class RouteSnapshot(
@@ -47,6 +40,11 @@ object IndirectSignsChecker {
         val isDefault: Boolean,
     )
 
+    internal data class InterfaceAddressSnapshot(
+        val address: String,
+        val prefixLength: Int,
+    )
+
     internal data class NetworkSnapshot(
         val label: String,
         val isActive: Boolean,
@@ -54,6 +52,7 @@ object IndirectSignsChecker {
         val interfaceName: String?,
         val routes: List<RouteSnapshot>,
         val dnsServers: List<String>,
+        val interfaceAddresses: List<InterfaceAddressSnapshot>,
     )
 
     internal data class LocalListener(
@@ -203,7 +202,15 @@ object IndirectSignsChecker {
                             isDefault = route.isDefaultRoute,
                         )
                     },
-                    dnsServers = linkProperties.dnsServers.mapNotNull { it.hostAddress?.lowercase() },
+                    dnsServers = linkProperties.dnsServers.mapNotNull { it.hostAddress?.let(::normalizeIpAddress) },
+                    interfaceAddresses = linkProperties.linkAddresses.mapNotNull { linkAddress ->
+                        linkAddress.address?.hostAddress?.let { address ->
+                            InterfaceAddressSnapshot(
+                                address = normalizeIpAddress(address),
+                                prefixLength = linkAddress.prefixLength,
+                            )
+                        }
+                    },
                 )
             }.sortedByDescending { it.isActive }
         } catch (_: Exception) {
@@ -505,12 +512,11 @@ object IndirectSignsChecker {
             return DnsEvaluation(findings, evidence, detected = false, needsReview = false)
         }
 
-        val activeVpn = activeSnapshot.isVpn || isVpnOrNonStandardInterface(activeSnapshot.interfaceName)
+        val activeVpn = isDnsVpnSnapshot(activeSnapshot)
         val activeRouteInterface = activeSnapshot.routes.firstOrNull { it.isDefault }?.interfaceName ?: activeSnapshot.interfaceName
-        val routeViaVpnInterface = isVpnOrNonStandardInterface(activeRouteInterface)
-        val underlyingDns = networkSnapshots
-            .filter { !it.isVpn }
-            .flatMapTo(linkedSetOf()) { it.dnsServers }
+        val routeViaVpnInterface = isVpnInterface(activeRouteInterface)
+        val underlyingSnapshots = networkSnapshots.filterNot(::isDnsVpnSnapshot)
+        val underlyingDns = underlyingSnapshots.flatMapTo(linkedSetOf()) { it.dnsServers }
 
         for (dns in activeSnapshot.dnsServers.distinct()) {
             val changedFromUnderlying = underlyingDns.isNotEmpty() && dns !in underlyingDns
@@ -535,12 +541,17 @@ object IndirectSignsChecker {
                     detected = true
                 }
 
-                DnsClassification.PRIVATE_TUNNEL -> {
+                DnsClassification.PRIVATE_NETWORK -> {
+                    if (isInheritedPrivateDns(dns, activeSnapshot, underlyingSnapshots, activeVpn)) {
+                        findings.add(Finding("DNS: $dns (наследуется из той же приватной подсети основной сети)"))
+                        continue
+                    }
+
                     val vpnAssigned = activeVpn && (changedFromUnderlying || routeViaVpnInterface)
                     findings.add(
                         Finding(
                             description = buildString {
-                                append("DNS в туннельной подсети: $dns")
+                                append("DNS в приватной подсети: $dns")
                                 if (changedFromUnderlying) append(" (отличается от underlying сети)")
                             },
                             detected = vpnAssigned,
@@ -554,35 +565,11 @@ object IndirectSignsChecker {
                             source = EvidenceSource.DNS,
                             detected = true,
                             confidence = if (vpnAssigned) EvidenceConfidence.MEDIUM else EvidenceConfidence.LOW,
-                            description = "DNS resolver uses private tunnel address $dns",
+                            description = "DNS resolver uses private network address $dns",
                         ),
                     )
                     detected = detected || vpnAssigned
                     needsReview = needsReview || !vpnAssigned
-                }
-
-                DnsClassification.PRIVATE_LAN -> {
-                    if (activeVpn && changedFromUnderlying) {
-                        findings.add(
-                            Finding(
-                                description = "DNS в LAN-подсети изменился при активном VPN: $dns",
-                                needsReview = true,
-                                source = EvidenceSource.DNS,
-                                confidence = EvidenceConfidence.LOW,
-                            ),
-                        )
-                        evidence.add(
-                            EvidenceItem(
-                                source = EvidenceSource.DNS,
-                                detected = true,
-                                confidence = EvidenceConfidence.LOW,
-                                description = "Private LAN DNS differs from underlying network: $dns",
-                            ),
-                        )
-                        needsReview = true
-                    } else {
-                        findings.add(Finding("DNS: $dns (локальный резолвер приватной сети)"))
-                    }
                 }
 
                 DnsClassification.KNOWN_PUBLIC_RESOLVER,
@@ -814,9 +801,21 @@ object IndirectSignsChecker {
         return STANDARD_INTERFACES.any { it.matches(name) }
     }
 
+    private fun isVpnInterface(name: String?): Boolean {
+        if (name.isNullOrBlank()) return false
+        return VPN_INTERFACE_PATTERNS.any { it.matches(name) }
+    }
+
     private fun isVpnOrNonStandardInterface(name: String?): Boolean {
         if (name.isNullOrBlank()) return false
         return !isStandardInterface(name)
+    }
+
+    private fun isDnsVpnSnapshot(snapshot: NetworkSnapshot): Boolean {
+        val defaultRouteInterface = snapshot.routes.firstOrNull { it.isDefault }?.interfaceName
+        return snapshot.isVpn ||
+            isVpnInterface(snapshot.interfaceName) ||
+            isVpnInterface(defaultRouteInterface)
     }
 
     private fun isLoopbackOrAnyAddress(host: String): Boolean {
@@ -824,18 +823,77 @@ object IndirectSignsChecker {
             host == "::1" || host.startsWith("127.")
     }
 
-    private fun isPrivate172(addr: String): Boolean {
-        val parts = addr.split(".")
-        if (parts.size < 2) return false
-        val second = parts[1].toIntOrNull() ?: return false
-        return second in 16..31
+    private fun normalizeIpAddress(addr: String): String = addr.substringBefore('%').lowercase()
+
+    private fun parseInetAddressOrNull(addr: String): InetAddress? {
+        return runCatching { InetAddress.getByName(normalizeIpAddress(addr)) }.getOrNull()
     }
 
-    private fun isPrivateCarrierGradeNat(addr: String): Boolean {
-        val parts = addr.split(".")
-        if (parts.size < 2 || parts[0] != "100") return false
-        val second = parts[1].toIntOrNull() ?: return false
-        return second in 64..127
+    private fun isPrivateDnsAddress(address: InetAddress): Boolean {
+        val bytes = address.address
+        return when (bytes.size) {
+            4 -> isPrivateIpv4Address(bytes)
+            16 -> (bytes[0].toInt() and 0xFE) == 0xFC
+            else -> false
+        }
+    }
+
+    private fun isPrivateIpv4Address(bytes: ByteArray): Boolean {
+        val first = bytes[0].toInt() and 0xFF
+        val second = bytes[1].toInt() and 0xFF
+        return when {
+            first == 10 -> true
+            first == 172 && second in 16..31 -> true
+            first == 192 && second == 168 -> true
+            first == 100 && second in 64..127 -> true
+            else -> false
+        }
+    }
+
+    private fun isInheritedPrivateDns(
+        dns: String,
+        activeSnapshot: NetworkSnapshot,
+        underlyingSnapshots: List<NetworkSnapshot>,
+        activeVpn: Boolean,
+    ): Boolean {
+        val dnsAddress = parseInetAddressOrNull(dns) ?: return false
+        if (!isPrivateDnsAddress(dnsAddress)) return false
+        if (!matchesPrivatePrefix(dnsAddress, activeSnapshot)) return false
+        return !activeVpn || underlyingSnapshots.any { matchesPrivatePrefix(dnsAddress, it) }
+    }
+
+    private fun matchesPrivatePrefix(
+        dnsAddress: InetAddress,
+        snapshot: NetworkSnapshot,
+    ): Boolean {
+        return snapshot.interfaceAddresses.any { linkAddress ->
+            val interfaceAddress = parseInetAddressOrNull(linkAddress.address) ?: return@any false
+            isPrivateDnsAddress(interfaceAddress) &&
+                interfaceAddress.address.size == dnsAddress.address.size &&
+                linkAddress.prefixLength in 0..(dnsAddress.address.size * 8) &&
+                isAddressInPrefix(dnsAddress, interfaceAddress, linkAddress.prefixLength)
+        }
+    }
+
+    private fun isAddressInPrefix(
+        address: InetAddress,
+        prefixAddress: InetAddress,
+        prefixLength: Int,
+    ): Boolean {
+        val addressBytes = address.address
+        val prefixBytes = prefixAddress.address
+        if (addressBytes.size != prefixBytes.size) return false
+        if (prefixLength == 0) return true
+
+        val fullBytes = prefixLength / 8
+        val remainingBits = prefixLength % 8
+        for (index in 0 until fullBytes) {
+            if (addressBytes[index] != prefixBytes[index]) return false
+        }
+        if (remainingBits == 0) return true
+
+        val mask = (0xFF shl (8 - remainingBits)) and 0xFF
+        return ((addressBytes[fullBytes].toInt() xor prefixBytes[fullBytes].toInt()) and mask) == 0
     }
 
     private fun checkDumpsysVpn(
@@ -1007,34 +1065,12 @@ object IndirectSignsChecker {
     }
 
     internal fun classifyDnsAddress(addr: String): DnsClassification {
-        val normalized = addr.lowercase()
-        if (normalized == "::1" || normalized.startsWith("127.")) return DnsClassification.LOOPBACK
-        if (normalized.startsWith("169.254.") || normalized.startsWith("fe80:")) {
-            return DnsClassification.LINK_LOCAL
-        }
-        if (
-            normalized.startsWith("10.") ||
-            (normalized.startsWith("172.") && isPrivate172(normalized)) ||
-            isPrivateCarrierGradeNat(normalized) ||
-            normalized.startsWith("fc") ||
-            normalized.startsWith("fd")
-        ) {
-            return DnsClassification.PRIVATE_TUNNEL
-        }
-        if (normalized.startsWith("192.168.")) return DnsClassification.PRIVATE_LAN
+        val normalized = normalizeIpAddress(addr)
+        val parsedAddress = parseInetAddressOrNull(normalized)
+        if (parsedAddress?.isLoopbackAddress == true) return DnsClassification.LOOPBACK
+        if (parsedAddress?.isLinkLocalAddress == true) return DnsClassification.LINK_LOCAL
+        if (parsedAddress != null && isPrivateDnsAddress(parsedAddress)) return DnsClassification.PRIVATE_NETWORK
         if (normalized in KNOWN_PUBLIC_RESOLVERS) return DnsClassification.KNOWN_PUBLIC_RESOLVER
         return DnsClassification.OTHER_PUBLIC
-    }
-
-    internal fun classifyDnsSignalStatus(addr: String): DnsSignalStatus {
-        return when (classifyDnsAddress(addr)) {
-            DnsClassification.LOOPBACK -> DnsSignalStatus.DETECTED
-            DnsClassification.PRIVATE_TUNNEL -> DnsSignalStatus.NEEDS_REVIEW
-            DnsClassification.PRIVATE_LAN,
-            DnsClassification.KNOWN_PUBLIC_RESOLVER,
-            DnsClassification.LINK_LOCAL,
-            DnsClassification.OTHER_PUBLIC,
-            -> DnsSignalStatus.CLEAR
-        }
     }
 }

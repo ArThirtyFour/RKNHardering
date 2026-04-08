@@ -1,7 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.DnsClassification
-import com.notcvnt.rknhardering.checker.IndirectSignsChecker.DnsSignalStatus
+import com.notcvnt.rknhardering.checker.IndirectSignsChecker.InterfaceAddressSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.NetworkSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.RouteSnapshot
 import com.notcvnt.rknhardering.model.EvidenceSource
@@ -19,26 +19,20 @@ class IndirectSignsCheckerTest {
     }
 
     @Test
-    fun `classifies private tunnel dns including carrier grade nat`() {
-        assertEquals(DnsClassification.PRIVATE_TUNNEL, IndirectSignsChecker.classifyDnsAddress("10.0.0.2"))
-        assertEquals(DnsClassification.PRIVATE_TUNNEL, IndirectSignsChecker.classifyDnsAddress("172.16.0.10"))
-        assertEquals(DnsClassification.PRIVATE_TUNNEL, IndirectSignsChecker.classifyDnsAddress("100.64.0.10"))
-        assertEquals(DnsClassification.PRIVATE_TUNNEL, IndirectSignsChecker.classifyDnsAddress("fd00::1"))
+    fun `classifies private network dns including carrier grade nat and ula`() {
+        assertEquals(DnsClassification.PRIVATE_NETWORK, IndirectSignsChecker.classifyDnsAddress("10.0.0.2"))
+        assertEquals(DnsClassification.PRIVATE_NETWORK, IndirectSignsChecker.classifyDnsAddress("172.16.0.10"))
+        assertEquals(DnsClassification.PRIVATE_NETWORK, IndirectSignsChecker.classifyDnsAddress("192.168.1.1"))
+        assertEquals(DnsClassification.PRIVATE_NETWORK, IndirectSignsChecker.classifyDnsAddress("100.64.0.10"))
+        assertEquals(DnsClassification.PRIVATE_NETWORK, IndirectSignsChecker.classifyDnsAddress("fd00::1"))
     }
 
     @Test
-    fun `classifies private lan and public dns separately`() {
-        assertEquals(DnsClassification.PRIVATE_LAN, IndirectSignsChecker.classifyDnsAddress("192.168.1.1"))
+    fun `classifies link local and public dns separately`() {
+        assertEquals(DnsClassification.LINK_LOCAL, IndirectSignsChecker.classifyDnsAddress("169.254.1.1"))
+        assertEquals(DnsClassification.LINK_LOCAL, IndirectSignsChecker.classifyDnsAddress("fe80::1"))
         assertEquals(DnsClassification.KNOWN_PUBLIC_RESOLVER, IndirectSignsChecker.classifyDnsAddress("8.8.8.8"))
         assertEquals(DnsClassification.OTHER_PUBLIC, IndirectSignsChecker.classifyDnsAddress("77.88.55.55"))
-    }
-
-    @Test
-    fun `maps dns classes to expected statuses`() {
-        assertEquals(DnsSignalStatus.DETECTED, IndirectSignsChecker.classifyDnsSignalStatus("127.0.0.1"))
-        assertEquals(DnsSignalStatus.NEEDS_REVIEW, IndirectSignsChecker.classifyDnsSignalStatus("10.0.0.2"))
-        assertEquals(DnsSignalStatus.CLEAR, IndirectSignsChecker.classifyDnsSignalStatus("192.168.1.1"))
-        assertEquals(DnsSignalStatus.CLEAR, IndirectSignsChecker.classifyDnsSignalStatus("8.8.8.8"))
     }
 
     @Test
@@ -73,6 +67,7 @@ class IndirectSignsCheckerTest {
                     interfaceName = "wlan0",
                     routes = listOf(route("0.0.0.0/0", "wlan0", isDefault = true)),
                     dnsServers = listOf("192.168.1.1"),
+                    interfaceAddresses = listOf(linkAddress("192.168.1.2", 24)),
                 ),
             ),
         )
@@ -99,6 +94,7 @@ class IndirectSignsCheckerTest {
                     interfaceName = "wlan0",
                     routes = listOf(route("0.0.0.0/0", "wlan0", isDefault = true)),
                     dnsServers = listOf("192.168.1.1"),
+                    interfaceAddresses = listOf(linkAddress("192.168.1.2", 24)),
                 ),
             ),
         )
@@ -109,7 +105,7 @@ class IndirectSignsCheckerTest {
     }
 
     @Test
-    fun `inherited lan dns stays clear`() {
+    fun `shared ula dns across vpn and underlying prefixes stays clear`() {
         val evaluation = IndirectSignsChecker.checkDns(
             listOf(
                 snapshot(
@@ -117,14 +113,16 @@ class IndirectSignsCheckerTest {
                     isVpn = true,
                     interfaceName = "tun0",
                     routes = listOf(route("0.0.0.0/0", "tun0", isDefault = true)),
-                    dnsServers = listOf("192.168.1.1"),
+                    dnsServers = listOf("fd12:3456:789a::53"),
+                    interfaceAddresses = listOf(linkAddress("fd12:3456:789a::2", 64)),
                 ),
                 snapshot(
                     isActive = false,
                     isVpn = false,
                     interfaceName = "wlan0",
                     routes = listOf(route("0.0.0.0/0", "wlan0", isDefault = true)),
-                    dnsServers = listOf("192.168.1.1"),
+                    dnsServers = listOf("fd12:3456:789a::1"),
+                    interfaceAddresses = listOf(linkAddress("fd12:3456:789a::10", 64)),
                 ),
             ),
         )
@@ -132,6 +130,82 @@ class IndirectSignsCheckerTest {
         assertFalse(evaluation.detected)
         assertFalse(evaluation.needsReview)
         assertTrue(evaluation.evidence.isEmpty())
+    }
+
+    @Test
+    fun `shared carrier grade nat dns across vpn and underlying prefixes stays clear`() {
+        val evaluation = IndirectSignsChecker.checkDns(
+            listOf(
+                snapshot(
+                    isActive = true,
+                    isVpn = true,
+                    interfaceName = "tun0",
+                    routes = listOf(route("0.0.0.0/0", "tun0", isDefault = true)),
+                    dnsServers = listOf("100.64.10.53"),
+                    interfaceAddresses = listOf(linkAddress("100.64.10.2", 24)),
+                ),
+                snapshot(
+                    isActive = false,
+                    isVpn = false,
+                    interfaceName = "rmnet0",
+                    routes = listOf(route("0.0.0.0/0", "rmnet0", isDefault = true)),
+                    dnsServers = listOf("100.64.10.1"),
+                    interfaceAddresses = listOf(linkAddress("100.64.10.9", 24)),
+                ),
+            ),
+        )
+
+        assertFalse(evaluation.detected)
+        assertFalse(evaluation.needsReview)
+        assertTrue(evaluation.evidence.isEmpty())
+    }
+
+    @Test
+    fun `private dns on local non vpn prefix stays clear`() {
+        val evaluation = IndirectSignsChecker.checkDns(
+            listOf(
+                snapshot(
+                    isActive = true,
+                    isVpn = false,
+                    interfaceName = "rmnet0",
+                    routes = listOf(route("0.0.0.0/0", "rmnet0", isDefault = true)),
+                    dnsServers = listOf("100.64.10.53"),
+                    interfaceAddresses = listOf(linkAddress("100.64.10.2", 24)),
+                ),
+            ),
+        )
+
+        assertFalse(evaluation.detected)
+        assertFalse(evaluation.needsReview)
+        assertTrue(evaluation.evidence.isEmpty())
+    }
+
+    @Test
+    fun `private dns on different underlying prefix stays detected on active vpn`() {
+        val evaluation = IndirectSignsChecker.checkDns(
+            listOf(
+                snapshot(
+                    isActive = true,
+                    isVpn = true,
+                    interfaceName = "tun0",
+                    routes = listOf(route("0.0.0.0/0", "tun0", isDefault = true)),
+                    dnsServers = listOf("fd12:3456:789a::53"),
+                    interfaceAddresses = listOf(linkAddress("fd12:3456:789a::2", 64)),
+                ),
+                snapshot(
+                    isActive = false,
+                    isVpn = false,
+                    interfaceName = "wlan0",
+                    routes = listOf(route("0.0.0.0/0", "wlan0", isDefault = true)),
+                    dnsServers = listOf("fd98:7654:3210::1"),
+                    interfaceAddresses = listOf(linkAddress("fd98:7654:3210::10", 64)),
+                ),
+            ),
+        )
+
+        assertTrue(evaluation.detected)
+        assertFalse(evaluation.needsReview)
+        assertTrue(evaluation.evidence.any { it.source == EvidenceSource.DNS && it.detected })
     }
 
     @Test
@@ -180,6 +254,7 @@ class IndirectSignsCheckerTest {
         interfaceName: String?,
         routes: List<RouteSnapshot>,
         dnsServers: List<String> = emptyList(),
+        interfaceAddresses: List<InterfaceAddressSnapshot> = emptyList(),
     ): NetworkSnapshot {
         return NetworkSnapshot(
             label = interfaceName ?: "network",
@@ -188,6 +263,14 @@ class IndirectSignsCheckerTest {
             interfaceName = interfaceName,
             routes = routes,
             dnsServers = dnsServers,
+            interfaceAddresses = interfaceAddresses,
+        )
+    }
+
+    private fun linkAddress(address: String, prefixLength: Int): InterfaceAddressSnapshot {
+        return InterfaceAddressSnapshot(
+            address = address,
+            prefixLength = prefixLength,
         )
     }
 
