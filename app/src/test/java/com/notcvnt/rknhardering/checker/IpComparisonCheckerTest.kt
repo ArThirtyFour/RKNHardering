@@ -131,7 +131,7 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertFalse(result.needsReview)
-        assertEquals("Ð¡Ð¾Ð²Ð¿Ð°Ð´Ð°ÐµÑ‚", result.nonRuGroup.statusLabel)
+        assertEquals("Совпадает", result.nonRuGroup.statusLabel)
         assertEquals(1, result.nonRuGroup.ignoredIpv6ErrorCount)
     }
 
