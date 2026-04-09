@@ -3,6 +3,7 @@ package com.notcvnt.rknhardering
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -27,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
 import com.notcvnt.rknhardering.checker.BypassChecker
 import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.checker.VpnCheckRunner
@@ -38,6 +40,7 @@ import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.Verdict
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -92,6 +95,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textVerdict: TextView
     private lateinit var geoIpInfoSection: LinearLayout
     private lateinit var geoIpDivider: View
+    private lateinit var locationInfoSection: LinearLayout
+    private lateinit var locationDivider: View
     private val bypassProgressLines = linkedMapOf<BypassChecker.ProgressLine, String>()
     private val bypassProgressOrder = listOf(
         BypassChecker.ProgressLine.BYPASS,
@@ -189,6 +194,9 @@ class MainActivity : AppCompatActivity() {
         textVerdict = findViewById(R.id.textVerdict)
         geoIpInfoSection = findViewById(R.id.geoIpInfoSection)
         geoIpDivider = findViewById(R.id.geoIpDivider)
+        locationInfoSection = findViewById(R.id.locationInfoSection)
+        locationDivider = findViewById(R.id.locationDivider)
+        updateCheckControls(isRunning = false)
     }
 
     private fun requiredPermissions(): Array<String> {
@@ -289,6 +297,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onRunCheckClicked() {
+        if (checkJob?.isActive == true) return
         hasDismissedRunCheckNotice = true
         updateRunCheckNoticeVisibility()
         runCheck()
@@ -298,24 +307,57 @@ class MainActivity : AppCompatActivity() {
         cardRunCheckNotice.visibility = if (hasDismissedRunCheckNotice) View.GONE else View.VISIBLE
     }
 
+    private fun updateCheckControls(isRunning: Boolean) {
+        val runButtonBackgroundAttr = if (isRunning) {
+            com.google.android.material.R.attr.colorPrimaryContainer
+        } else {
+            com.google.android.material.R.attr.colorPrimary
+        }
+        val runButtonForegroundAttr = if (isRunning) {
+            com.google.android.material.R.attr.colorOnPrimaryContainer
+        } else {
+            com.google.android.material.R.attr.colorOnPrimary
+        }
+        val runButtonBackground = MaterialColors.getColor(btnRunCheck, runButtonBackgroundAttr)
+        val runButtonForeground = MaterialColors.getColor(btnRunCheck, runButtonForegroundAttr)
+
+        btnRunCheck.isEnabled = !isRunning
+        btnRunCheck.isClickable = !isRunning
+        btnRunCheck.isFocusable = !isRunning
+        btnRunCheck.alpha = if (isRunning) 0.72f else 1.0f
+        btnRunCheck.backgroundTintList = ColorStateList.valueOf(runButtonBackground)
+        btnRunCheck.setTextColor(runButtonForeground)
+        btnRunCheck.iconTint = ColorStateList.valueOf(runButtonForeground)
+
+        btnStopCheck.visibility = if (isRunning) View.VISIBLE else View.GONE
+        progressBar.visibility = if (isRunning) View.VISIBLE else View.GONE
+    }
+
     private fun runCheck() {
         val splitTunnelEnabled = prefs.getBoolean(SettingsActivity.PREF_SPLIT_TUNNEL_ENABLED, true)
         val networkRequestsEnabled = prefs.getBoolean(SettingsActivity.PREF_NETWORK_REQUESTS_ENABLED, true)
         val portRange = prefs.getString(SettingsActivity.PREF_PORT_RANGE, "full") ?: "full"
         val portRangeStart = prefs.getInt(SettingsActivity.PREF_PORT_RANGE_START, 1024)
         val portRangeEnd = prefs.getInt(SettingsActivity.PREF_PORT_RANGE_END, 65535)
+        val resolverConfig = DnsResolverConfig.fromPrefs(
+            prefs = prefs,
+            modePref = SettingsActivity.PREF_DNS_RESOLVER_MODE,
+            presetPref = SettingsActivity.PREF_DNS_RESOLVER_PRESET,
+            directServersPref = SettingsActivity.PREF_DNS_RESOLVER_DIRECT_SERVERS,
+            dohUrlPref = SettingsActivity.PREF_DNS_RESOLVER_DOH_URL,
+            dohBootstrapPref = SettingsActivity.PREF_DNS_RESOLVER_DOH_BOOTSTRAP,
+        )
 
         val settings = CheckSettings(
             splitTunnelEnabled = splitTunnelEnabled,
             networkRequestsEnabled = networkRequestsEnabled,
+            resolverConfig = resolverConfig,
             portRange = portRange,
             portRangeStart = portRangeStart,
             portRangeEnd = portRangeEnd,
         )
 
-        btnRunCheck.isEnabled = false
-        btnStopCheck.visibility = View.VISIBLE
-        progressBar.visibility = View.VISIBLE
+        updateCheckControls(isRunning = true)
         hideCards()
 
         if (splitTunnelEnabled) {
@@ -341,18 +383,16 @@ class MainActivity : AppCompatActivity() {
                         updateBypassProgress(progress)
                     }
                 }
-                progressBar.visibility = View.GONE
-                btnStopCheck.visibility = View.GONE
-                btnRunCheck.isEnabled = true
+                updateCheckControls(isRunning = false)
                 displayResult(result, settings)
             } catch (e: kotlinx.coroutines.CancellationException) {
-                progressBar.visibility = View.GONE
-                btnStopCheck.visibility = View.GONE
-                btnRunCheck.isEnabled = true
+                updateCheckControls(isRunning = false)
                 resetBypassProgress()
                 statusBypass.text = "Отменено"
                 statusBypass.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.verdict_yellow))
                 throw e
+            } finally {
+                checkJob = null
             }
         }
     }
@@ -395,29 +435,25 @@ class MainActivity : AppCompatActivity() {
 
         bindCardStatus(category.detected, category.needsReview, icon, status, hasError = category.hasError)
 
-        if (card.id == R.id.cardGeoIp) {
-            val infoFindings = category.findings.filter { it.source == null }
-            val checkFindings = category.findings.filter { it.source != null }
+        val infoSection = when (card.id) {
+            R.id.cardGeoIp -> geoIpInfoSection
+            R.id.cardLocation -> locationInfoSection
+            else -> null
+        }
+        val infoDivider = when (card.id) {
+            R.id.cardGeoIp -> geoIpDivider
+            R.id.cardLocation -> locationDivider
+            else -> null
+        }
 
-            geoIpInfoSection.removeAllViews()
-            for (finding in infoFindings) {
-                val parts = finding.description.split(": ", limit = 2)
-                if (parts.size == 2) {
-                    val value = if (privacyMode && parts[0].trim().equals("IP", ignoreCase = true)) {
-                        maskIp(parts[1].trim())
-                    } else {
-                        parts[1]
-                    }
-                    geoIpInfoSection.addView(createGeoInfoView(parts[0], value))
-                } else {
-                    geoIpInfoSection.addView(createFindingView(finding, privacyMode))
-                }
-            }
-            val hasInfo = infoFindings.isNotEmpty() && checkFindings.isNotEmpty()
-            geoIpDivider.visibility = if (hasInfo) View.VISIBLE else View.GONE
+        if (infoSection != null && infoDivider != null) {
+            val infoFindings = category.findings.filter { it.isInformational }
+            val checkFindings = category.findings.filterNot { it.isInformational }
 
+            bindInfoSection(infoFindings, infoSection, infoDivider, checkFindings.isNotEmpty(), privacyMode)
             findingsContainer.removeAllViews()
             for (finding in checkFindings) {
+                if (finding.description.startsWith("network_mcc_ru:")) continue
                 findingsContainer.addView(createFindingView(finding, privacyMode))
             }
             return
@@ -428,6 +464,30 @@ class MainActivity : AppCompatActivity() {
             if (finding.description.startsWith("network_mcc_ru:")) continue
             findingsContainer.addView(createFindingView(finding, privacyMode))
         }
+    }
+
+    private fun bindInfoSection(
+        infoFindings: List<Finding>,
+        infoSection: LinearLayout,
+        infoDivider: View,
+        hasCheckFindings: Boolean,
+        privacyMode: Boolean,
+    ) {
+        infoSection.removeAllViews()
+        for (finding in infoFindings) {
+            val parts = finding.description.split(": ", limit = 2)
+            if (parts.size == 2) {
+                val value = if (privacyMode && parts[0].trim().equals("IP", ignoreCase = true)) {
+                    maskIp(parts[1].trim())
+                } else {
+                    parts[1]
+                }
+                infoSection.addView(createInfoView(parts[0], value))
+            } else {
+                infoSection.addView(createFindingView(finding, privacyMode))
+            }
+        }
+        infoDivider.visibility = if (infoFindings.isNotEmpty() && hasCheckFindings) View.VISIBLE else View.GONE
     }
 
     private fun displayIpComparison(result: IpComparisonResult, privacyMode: Boolean = false) {
@@ -502,7 +562,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createGeoInfoView(label: String, value: String): View {
+    private fun createInfoView(label: String, value: String): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL

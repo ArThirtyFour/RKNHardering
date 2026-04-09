@@ -54,7 +54,9 @@
                     android:id="@+id/btnRunCheck"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="1.35"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:text="Запустить проверку"
                     android:textAllCaps="false"
                     app:icon="@drawable/ic_check_circle"
@@ -66,10 +68,15 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="0.85"
                     android:layout_marginStart="8dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:text="Остановить"
                     android:textAllCaps="false"
+                    app:icon="@drawable/ic_stop_circle"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/colorPrimary"
                     android:visibility="gone" />
             </LinearLayout>
 
@@ -380,6 +387,22 @@
                             android:layout_height="wrap_content"
                             android:textSize="14sp" />
                     </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/locationInfoSection"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <View
+                        android:id="@+id/locationDivider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginBottom="4dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:visibility="gone" />
 
                     <LinearLayout
                         android:id="@+id/findingsLocation"
