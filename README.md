@@ -1,3 +1,5 @@
+> **Язык / Language:** [Русский](README.md) | [English](docs/README.en.md) | [فارسی](docs/README.fa.md) | [中文](docs/README.zh-CN.md)
+
 # RKNHardering
 
 Android-приложение для обнаружения VPN и прокси на устройстве. Реализует методику РКН по выявлению средств обхода блокировок.

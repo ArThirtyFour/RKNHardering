@@ -1,5 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
@@ -7,9 +9,13 @@ import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.Assert.assertEquals
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class BypassCheckerTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `explicit vpn network binding on non vpn default network is detected`() {
@@ -17,6 +23,7 @@ class BypassCheckerTest {
         val evidence = mutableListOf<EvidenceItem>()
 
         val detected = BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = true,
@@ -40,6 +47,7 @@ class BypassCheckerTest {
         val evidence = mutableListOf<EvidenceItem>()
 
         val detected = BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = true,
@@ -62,6 +70,7 @@ class BypassCheckerTest {
         val evidence = mutableListOf<EvidenceItem>()
 
         BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
@@ -88,6 +97,7 @@ class BypassCheckerTest {
         val evidence = mutableListOf<EvidenceItem>()
 
         BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
@@ -103,7 +113,7 @@ class BypassCheckerTest {
             findings.any {
                 it.isInformational &&
                     it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
-                    it.description.contains("недоступен")
+                    it.description.contains("unavailable")
             },
         )
     }
@@ -114,6 +124,7 @@ class BypassCheckerTest {
         val evidence = mutableListOf<EvidenceItem>()
 
         val detected = BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = true,

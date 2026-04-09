@@ -1,0 +1,309 @@
+<resources>
+    <string name="app_name">RKNHardering</string>
+    <string name="github_repo_label">GitHub</string>
+    <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
+    <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_section_checks">检查</string>
+    <string name="settings_section_privacy">隐私</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_split_tunnel">Split tunnel bypass</string>
+    <string name="settings_split_tunnel_desc">端口扫描需要较长时间</string>
+    <string name="settings_port_range">端口范围</string>
+    <string name="settings_port_range_desc">用于 Split tunnel 扫描</string>
+    <string name="settings_port_popular">常用</string>
+    <string name="settings_port_extended">扩展</string>
+    <string name="settings_port_full">完整</string>
+    <string name="settings_port_custom">自定义</string>
+    <string name="settings_network_requests">网络请求</string>
+    <string name="settings_network_requests_desc">GeoIP、IP 比较、BeaconDB</string>
+    <string name="settings_network_disable_title">要禁用网络请求吗？</string>
+    <string name="settings_network_disable_message">禁用后：\n\n• GeoIP 检查将不会运行\n• 通过外部服务进行的 IP 比较将被禁用\n• 通过 BeaconDB（基站/Wi-Fi）进行的位置判断将被禁用\n\n届时只保留本地检查：直接迹象、间接迹象和端口扫描</string>
+    <string name="settings_network_disable_confirm">禁用</string>
+    <string name="settings_dns_resolver">DNS resolver</string>
+    <string name="settings_dns_resolver_desc">用于 GeoIP、IP Comparison 和 BeaconDB。它不会修改 Android 系统 DNS，也不会影响本地 DNS 检查。</string>
+    <string name="settings_dns_mode_system">系统</string>
+    <string name="settings_dns_mode_direct">Direct DNS</string>
+    <string name="settings_dns_mode_doh">DoH</string>
+    <string name="settings_dns_preset_custom">自定义</string>
+    <string name="settings_dns_preset_cloudflare">Cloudflare</string>
+    <string name="settings_dns_preset_google">Google</string>
+    <string name="settings_dns_preset_yandex">Yandex</string>
+    <string name="settings_dns_direct_servers">DNS 服务器</string>
+    <string name="settings_dns_direct_servers_hint">1.1.1.1, 1.0.0.1</string>
+    <string name="settings_dns_doh_url">DoH URL</string>
+    <string name="settings_dns_doh_url_hint">https://dns.google/dns-query</string>
+    <string name="settings_dns_bootstrap">Bootstrap IP</string>
+    <string name="settings_dns_bootstrap_hint">8.8.8.8, 8.8.4.4</string>
+    <string name="settings_privacy_mode">隐私模式</string>
+    <string name="settings_privacy_mode_desc">IP 显示为 185.22.*.*</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_system">系统</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_ru">Русский</string>
+    <string name="settings_language_fa">فارسی</string>
+    <string name="settings_language_zh">中文</string>
+    <string name="settings_permissions">权限</string>
+    <string name="settings_permissions_desc">管理应用权限</string>
+    <string name="settings_github">GitHub</string>
+    <string name="settings_github_desc">xtclovver/RKNHardering</string>
+    <string name="settings_port_range_from">从</string>
+    <string name="settings_port_range_to">到</string>
+
+    <string name="main_subtitle">VPN/代理自检</string>
+    <string name="main_run_check">运行检查</string>
+    <string name="main_stop_check">停止</string>
+    <string name="main_card_ip_comparison">IP 比较</string>
+    <string name="main_card_direct_signs">直接迹象</string>
+    <string name="main_card_indirect_signs">间接迹象</string>
+    <string name="main_card_location_signals">位置迹象</string>
+    <string name="main_verdict_details">详情</string>
+
+    <string name="main_perm_title">额外权限</string>
+    <string name="main_perm_allow">允许</string>
+    <string name="main_perm_skip">跳过</string>
+    <string name="main_perm_all_granted">所有权限均已授予</string>
+    <string name="main_perm_blocked">权限已被阻止。请打开应用设置。</string>
+    <string name="main_perm_rationale">为了获得更准确的检查结果，应用需要精确位置权限。\n\n该权限用于读取基站标识并通过 BeaconDB 执行 geolocation lookup。\n\n%s\n\n没有这些权限，检查仍可运行，但部分位置迹象和 Wi-Fi 扫描将不可用。</string>
+    <string name="main_perm_rationale_wifi_13">在 Android 13+ 上，应用还会请求 nearby Wi-Fi devices 权限，用于发现附近的 Wi-Fi 接入点。</string>
+    <string name="main_perm_rationale_wifi">应用还会使用 Wi-Fi 扫描来发现附近的接入点。</string>
+
+    <string name="main_check_running">检查正在进行中。卡片会随着数据到达实时更新。</string>
+    <string name="main_check_stopped">检查已停止</string>
+    <string name="main_status_scanning">正在扫描...</string>
+    <string name="main_status_preparing">正在准备...</string>
+    <string name="main_status_cancelled">已取消</string>
+    <string name="main_status_stopped">已停止</string>
+
+    <string name="main_loading_status_scanning">扫描中</string>
+    <string name="main_loading_status_checking">检查中</string>
+
+    <string name="main_loading_geo_ip">正在检查国家、ASN 和托管迹象。</string>
+    <string name="main_loading_ip_comparison">正在通过多个独立服务比较公网 IP。</string>
+    <string name="main_loading_direct">正在查找 VPN、代理和已安装客户端的直接迹象。</string>
+    <string name="main_loading_indirect">正在检查接口、DNS、路由和本地技术迹象。</string>
+    <string name="main_loading_location">正在收集运营商、基站和附近 Wi-Fi 的迹象。</string>
+    <string name="main_loading_bypass">正在查找本地 split tunnel bypass 和可用的 proxy endpoint。</string>
+
+    <string name="main_stopped_scan">该阶段在完成前已被停止。</string>
+    <string name="main_stopped_check">此阶段在完成前已被停止。</string>
+
+    <string name="main_card_status_detected">已发现</string>
+    <string name="main_card_status_error">错误</string>
+    <string name="main_card_status_needs_review">需要复核</string>
+    <string name="main_card_status_clean">干净</string>
+
+    <string name="main_verdict_not_detected">未检测到绕过</string>
+    <string name="main_verdict_needs_review">需要进一步复核</string>
+    <string name="main_verdict_detected">检测到绕过</string>
+
+    <string name="main_verdict_section_meaning">这意味着什么</string>
+    <string name="main_verdict_section_discovered">发现了什么</string>
+    <string name="main_verdict_section_reasons">为何得出此结论</string>
+
+    <string name="main_verdict_hide_details">隐藏详情</string>
+
+    <string name="main_ipv6_error_ignored">已忽略 IPv6 错误： </string>
+
+    <string name="settings_port_range_preview">将扫描的 localhost 代理端口：%1$s（%2$s %3$s）</string>
+    <plurals name="settings_port_word">
+        <item quantity="other">个端口</item>
+    </plurals>
+
+    <string name="narrative_exposure_remote_endpoint">已发现远程节点</string>
+    <string name="narrative_exposure_public_ip">仅发现公网 IP</string>
+    <string name="narrative_exposure_local_proxy">仅发现本地 proxy/API</string>
+    <string name="narrative_exposure_technical_signal">仅发现技术性网络迹象</string>
+    <string name="narrative_exposure_insufficient">未收集到服务器数据</string>
+
+    <string name="narrative_explanation_detected">自动检查认为绕过已经得到确认。</string>
+    <string name="narrative_explanation_needs_review">自动检查不足以得出明确结论。</string>
+    <string name="narrative_explanation_not_detected">检查未发现有说服力的绕过迹象。</string>
+
+    <string name="narrative_explanation_exposure_remote">本地 Xray API 暴露了远程节点地址。</string>
+    <string name="narrative_explanation_exposure_public_ip">只能看到公网出口 IP，看不到最终服务器地址。</string>
+    <string name="narrative_explanation_exposure_local_proxy">只能看到设备上的本地 proxy/API，看不到远程节点地址。</string>
+    <string name="narrative_explanation_exposure_technical">只获得了技术性网络与路由迹象，没有服务器地址。</string>
+    <string name="narrative_explanation_exposure_insufficient">既未获得服务器地址，也未获得公网 IP。</string>
+
+    <string name="narrative_meaning_detected">红色结论表示自动检查已经收集到足够的绕过迹象。</string>
+    <string name="narrative_meaning_needs_review">黄色结论表示存在一些迹象，但仍需人工复核。</string>
+    <string name="narrative_meaning_not_detected">绿色结论表示没有发现决定性的绕过迹象。</string>
+    <string name="narrative_meaning_exposure_remote">获得的是实际远程节点地址，而不仅仅是公网 IP。</string>
+    <string name="narrative_meaning_exposure_public_ip">公网 IP 与最终服务器地址不是一回事：互联网服务只能看到出口 IP，它可能只是一个出口节点。</string>
+    <string name="narrative_meaning_exposure_local_proxy">本地 proxy/API 表明设备上存在绕过机制，但它本身不会泄露远程服务器。</string>
+    <string name="narrative_meaning_exposure_technical">技术性迹象可以确认网络行为，但不会揭示远程节点地址。</string>
+    <string name="narrative_meaning_exposure_insufficient">根据当前数据，无法判断应用是否已经获知绕过服务器地址。</string>
+
+    <string name="narrative_label_exposure_level">暴露级别</string>
+    <string name="narrative_label_xray_api">本地 Xray API</string>
+    <string name="narrative_label_remote_endpoint">远程节点</string>
+    <string name="narrative_label_remote_endpoint_extra">额外远程节点</string>
+    <string name="narrative_label_local_proxy">本地代理</string>
+    <string name="narrative_label_vpn_network_ip">通过 VPN Network 获取的 IP</string>
+    <string name="narrative_label_real_ip">VPN 外部 IP</string>
+    <string name="narrative_label_direct_ip">直接公网 IP</string>
+    <string name="narrative_label_proxy_ip">经代理获得的公网 IP</string>
+    <string name="narrative_label_checkers_ip">外部 checker 返回的 IP</string>
+    <string name="narrative_label_ru_checkers_ip">RU checker 返回的 IP</string>
+    <string name="narrative_label_non_ru_checkers_ip">非 RU checker 返回的 IP</string>
+    <string name="narrative_label_geo_ip">GeoIP 返回的 IP</string>
+
+    <string name="narrative_reason_xray_api">设备上发现了本地 Xray API，并且可以读取 outbound 地址。</string>
+    <string name="narrative_reason_split_tunnel">直接 IP 与通过本地代理获得的 IP 不同。</string>
+    <string name="narrative_reason_vpn_gateway_leak">VPN 激活时，应用仍能访问非 VPN 网络。</string>
+    <string name="narrative_reason_vpn_network_binding">应用能够将 VPN Network 对象与常规网络分开使用。</string>
+    <string name="narrative_reason_bypass_unconfirmed">发现了本地代理，但绕过未能被自动确认。</string>
+    <string name="narrative_reason_ip_comparison_detected">RU 与非 RU IP checker 返回了不同的公网 IP。</string>
+    <string name="narrative_reason_ip_comparison_review">外部 IP checker 的响应不完整或相互矛盾。</string>
+    <string name="narrative_reason_geo_location_conflict">位置迹象指向俄罗斯，而 GeoIP 指向境外地址。</string>
+    <string name="narrative_reason_geo_foreign">GeoIP 指示了境外或可疑地址。</string>
+    <string name="narrative_reason_direct_signs">发现了本地代理/VPN 的直接迹象。</string>
+    <string name="narrative_reason_indirect_signs">发现了隧道、路由变化或 DNS 替换的间接迹象。</string>
+    <string name="narrative_reason_fallback_detected">该结论基于多个检查信号的组合。</string>
+    <string name="narrative_reason_fallback_review">信号不完整或相互矛盾，因此需要人工复核。</string>
+    <string name="narrative_reason_fallback_clean">未发现决定性的绕过迹象。</string>
+
+    <string name="checker_yes">是</string>
+    <string name="checker_no">否</string>
+
+    <string name="checker_geo_error_no_provider">没有任何 GeoIP 提供方返回数据</string>
+    <string name="checker_geo_error_fetch">无法获取 GeoIP 数据：%1$s</string>
+    <string name="checker_geo_info_ip">IP：%1$s</string>
+    <string name="checker_geo_info_country">国家：%1$s（%2$s）</string>
+    <string name="checker_geo_info_isp">ISP：%1$s</string>
+    <string name="checker_geo_info_org">组织：%1$s</string>
+    <string name="checker_geo_info_asn">ASN：%1$s</string>
+    <string name="checker_geo_foreign_ip_yes">IP 位于俄罗斯之外：是（%1$s）</string>
+    <string name="checker_geo_foreign_ip_no">IP 位于俄罗斯之外：否</string>
+    <string name="checker_geo_hosting_prefix">IP 属于托管服务提供商：%1$s</string>
+    <string name="checker_geo_proxy_db">IP 已出现在已知代理/VPN 数据库中：%1$s</string>
+
+    <string name="checker_ip_comp_ru_checkers">RU checker</string>
+    <string name="checker_ip_comp_non_ru_checkers">非 RU checker</string>
+    <string name="checker_ip_comp_summary_detected">RU 与非 RU checker 返回了不同的 IP：%1$s 和 %2$s</string>
+    <string name="checker_ip_comp_summary_family_mismatch">RU 与非 RU checker 返回了不同地址族的地址：%1$s 和 %2$s</string>
+    <string name="checker_ip_comp_summary_raw_mismatch">IP 不同，但数据不完整：%1$s 和 %2$s</string>
+    <string name="checker_ip_comp_summary_ipv4_only">所有返回结果的 IPv4 checker 都返回了相同的 IP：%1$s</string>
+    <string name="checker_ip_comp_summary_all_same">所有 checker 都返回了相同的 IP：%1$s</string>
+    <string name="checker_ip_comp_summary_no_response">没有任何 IP checker 返回响应</string>
+    <string name="checker_ip_comp_summary_incomplete">比较结果不完整：部分 checker 未响应</string>
+    <string name="checker_ip_comp_status_has_response">有响应</string>
+    <string name="checker_ip_comp_status_no_response">无响应</string>
+    <string name="checker_ip_comp_status_ipv6_ignored">已忽略 IPv6</string>
+    <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
+    <string name="checker_ip_comp_status_mismatch">不一致</string>
+    <string name="checker_ip_comp_status_partial">部分</string>
+    <string name="checker_ip_comp_status_match">一致</string>
+    <string name="checker_ip_comp_single_ip">IP：%1$s</string>
+    <string name="checker_ip_comp_single_error">错误：%1$s</string>
+    <string name="checker_ip_comp_single_no_answer">服务未响应</string>
+    <string name="checker_ip_comp_no_ip_returned">没有任何服务返回 IP</string>
+    <string name="checker_ip_comp_ipv6_ignored_no_ipv4">已忽略 IPv6 错误，但没有有效的 IPv4 响应</string>
+    <string name="checker_ip_comp_mixed_families">服务返回了不同地址族的地址：%1$s</string>
+    <string name="checker_ip_comp_different_ips">服务返回了不同的 IP：%1$s</string>
+    <string name="checker_ip_comp_partial">IP 为 %1$s，但 %2$d / %3$d 个服务未响应</string>
+    <string name="checker_ip_comp_all_same">该组所有有响应的服务都返回了 IP %1$s</string>
+    <string name="checker_ip_comp_ipv6_ignored_suffix">；已忽略 IPv6 错误：%1$d</string>
+
+    <string name="checker_direct_category_name">直接迹象</string>
+    <string name="checker_direct_no_active_network">未找到活动网络</string>
+    <string name="checker_direct_caps_unavailable">NetworkCapabilities 不可用</string>
+    <string name="checker_direct_transport_vpn">TRANSPORT_VPN：%1$s</string>
+    <string name="checker_direct_detected">已发现</string>
+    <string name="checker_direct_not_detected">未发现</string>
+    <string name="checker_direct_flag_is_vpn">在 capabilities 中发现了 IS_VPN 标记</string>
+    <string name="checker_direct_vpn_transport_info">在 transport info 中发现了 VpnTransportInfo</string>
+    <string name="checker_direct_http_proxy">HTTP 代理</string>
+    <string name="checker_direct_socks_proxy">SOCKS 代理</string>
+    <string name="checker_direct_proxy_not_configured">%1$s：未配置</string>
+    <string name="checker_direct_proxy_endpoint">%1$s：%2$s:%3$s</string>
+    <string name="checker_direct_proxy_known_port">%1$s 使用了已知端口 %2$s</string>
+    <string name="checker_direct_proxy_no_valid_port">%1$s：发现主机但端口无效</string>
+
+    <string name="checker_indirect_category_name">间接迹象</string>
+    <string name="checker_indirect_capability_not_vpn">Capability NOT_VPN：%1$s</string>
+    <string name="checker_indirect_present">存在</string>
+    <string name="checker_indirect_absent_suspicious">不存在（可疑）</string>
+    <string name="checker_indirect_no_vpn_interfaces">VPN 接口（tun/tap/wg/ppp/ipsec）：未发现</string>
+    <string name="checker_indirect_vpn_interface_found">发现 VPN 接口：%1$s</string>
+    <string name="checker_indirect_interface_error">检查接口时出错：%1$s</string>
+    <string name="checker_indirect_mtu_anomaly">MTU 异常：%1$s MTU=%2$d（&lt; 1500）</string>
+    <string name="checker_indirect_mtu_anomaly_nonstandard">MTU 异常：非标准接口 %1$s MTU=%2$d</string>
+    <string name="checker_indirect_mtu_no_anomalies">MTU：未发现异常</string>
+    <string name="checker_indirect_mtu_error">检查 MTU 时出错：%1$s</string>
+    <string name="checker_indirect_default_route_standard">默认路由：%1$s（标准）</string>
+    <string name="checker_indirect_default_route_nonstandard">通过非标准接口的默认路由：%1$s</string>
+    <string name="checker_indirect_dedicated_routes">通过 VPN/非标准接口的专用路由：%1$s</string>
+    <string name="checker_indirect_proc_default_route_standard">默认路由（/proc/net/route）：%1$s（标准）</string>
+    <string name="checker_indirect_proc_default_route_nonstandard">默认路由（/proc/net/route）通过非标准接口：%1$s</string>
+    <string name="checker_indirect_split_tunnel_routes">路由显示存在 split tunneling：同时可见 direct 与 tunnel 路由</string>
+    <string name="checker_indirect_gateway_route_unavailable">网关路由：无法通过 Android API 评估</string>
+    <string name="checker_indirect_routing_no_anomalies">路由：未发现异常</string>
+    <string name="checker_indirect_dns_no_active_network">DNS：未找到活动网络</string>
+    <string name="checker_indirect_dns_servers_not_found">DNS 服务器：未发现</string>
+    <string name="checker_indirect_dns_localhost">DNS 指向 localhost：%1$s（VPN/本地代理中很常见）</string>
+    <string name="checker_indirect_dns_inherited_private">DNS：%1$s（继承自主网络相同的私有子网）</string>
+    <string name="checker_indirect_dns_private">私有子网中的 DNS：%1$s</string>
+    <string name="checker_indirect_dns_private_changed">私有子网中的 DNS：%1$s（与 underlying 网络不同）</string>
+    <string name="checker_indirect_dns_replaced_vpn">VPN 激活时 DNS 已被替换：%1$s</string>
+    <string name="checker_indirect_dns_source_unknown">DNS：%1$s（无法将来源匹配到 underlying 网络）</string>
+    <string name="checker_indirect_dns_plain">DNS：%1$s</string>
+    <string name="checker_indirect_dns_link_local">DNS：%1$s（link-local）</string>
+    <string name="checker_indirect_proxy_tool_installed">已安装代理工具：%1$s（%2$s）</string>
+    <string name="checker_indirect_local_listener">代理端口上的本地 listener：%1$s:%2$d/%3$s</string>
+    <string name="checker_indirect_many_localhost_listeners">在高位端口发现多个 localhost listener：%1$d</string>
+    <string name="checker_indirect_no_proxy_technical">额外技术性代理迹象：未发现</string>
+    <string name="checker_indirect_limited_checks">在没有 root/privileged access 的情况下，进程、iptables/pf 和系统证书检查会受到限制</string>
+    <string name="checker_indirect_dumpsys_vpn_unavailable">dumpsys vpn_management：不可用</string>
+    <string name="checker_indirect_dumpsys_vpn_none">dumpsys vpn_management：没有活动 VPN</string>
+    <string name="checker_indirect_dumpsys_vpn_line">VPN 管理：%1$s</string>
+    <string name="checker_indirect_dumpsys_vpn_error">dumpsys vpn_management：%1$s</string>
+    <string name="checker_indirect_dumpsys_service_unavailable">dumpsys activity services VpnService：不可用</string>
+    <string name="checker_indirect_dumpsys_service_none">活动中的 VpnService 实例：未发现</string>
+    <string name="checker_indirect_dumpsys_service_active">VpnService 处于活动状态：%1$s</string>
+    <string name="checker_indirect_dumpsys_service_error">dumpsys activity services：%1$s</string>
+
+    <string name="checker_bypass_progress_port_scan_phase">端口扫描</string>
+    <string name="checker_bypass_progress_port_scan_detail">正在查找 localhost 上的开放代理...</string>
+    <string name="checker_bypass_progress_popular_ports">常用端口</string>
+    <string name="checker_bypass_progress_full_scan">完整扫描</string>
+    <string name="checker_bypass_progress_port_detail">端口 %1$d（%2$d%%）</string>
+    <string name="checker_bypass_progress_xray_detail">正在查找 localhost 上的 gRPC API...</string>
+    <string name="checker_bypass_progress_underlying_detail">正在检查非 VPN 网络访问能力...</string>
+    <string name="checker_bypass_progress_ip_phase">IP 检查</string>
+    <string name="checker_bypass_progress_ip_detail">正在获取直接 IP 和经代理的 IP...</string>
+    <string name="checker_bypass_progress_mtproto_detail">正在通过代理检查 Telegram DC...</string>
+    <string name="checker_bypass_ip_unavailable">不可用</string>
+    <string name="checker_bypass_direct_ip">直接 IP：%1$s</string>
+    <string name="checker_bypass_proxy_ip">经代理的 IP：%1$s</string>
+    <string name="checker_bypass_split_confirmed">Per-app split bypass：已确认（IP 不同）</string>
+    <string name="checker_bypass_split_disabled">Per-app split 已关闭：IP 相同</string>
+    <string name="checker_bypass_mtproto_reachable">MTProto 代理：Telegram DC 可通过 %1$s -&gt; %2$s 访问</string>
+    <string name="checker_bypass_mtproto_unreachable">MTProto probe：Telegram DC 无法通过代理访问</string>
+    <string name="checker_bypass_no_open_proxy">localhost 上的开放代理：未发现</string>
+    <string name="checker_bypass_open_proxy">开放的 %1$s 代理：%2$s</string>
+    <string name="checker_bypass_open_proxy_review_suffix">（需要确认是否存在绕过）</string>
+    <string name="checker_bypass_no_xray">Xray gRPC API：未发现</string>
+    <string name="checker_bypass_xray_api">Xray gRPC API：%1$s</string>
+    <string name="checker_bypass_extra_outbounds">&#160;&#160;...还有 %1$d 个 outbound</string>
+    <string name="checker_bypass_vpn_not_active">Underlying network：VPN 未激活，无需执行此检查</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding：当默认网络不是 VPN 时，应用通过显式绑定到 VPN Network 获取了 IP %1$s</string>
+    <string name="checker_bypass_vpn_bound_ip">通过显式绑定到 VPN Network 获得的 IP：%1$s</string>
+    <string name="checker_bypass_tun_probe_success">TUN active probe：通过 VPN Network 发起的请求返回了 IP %1$s（TUN 是一个可路由的活动接口）</string>
+    <string name="checker_bypass_tun_probe_failure">TUN active probe：通过 VPN Network 发起的请求不可用（接口被阻止或被 filtered）</string>
+    <string name="checker_bypass_default_non_vpn_ip">默认非 VPN IP：%1$s</string>
+    <string name="checker_bypass_underlying_unreachable">Underlying network：非 VPN 网络不可用（full tunnel）</string>
+    <string name="checker_bypass_gateway_leak">VPN gateway leak：应用可以绕过 VPN 隧道（VPN IP：%1$s，真实 IP：%2$s）</string>
+    <string name="checker_bypass_underlying_same_ip">Underlying 网络可达，但 IP 与 VPN%1$s 相同：split tunnel 未确认</string>
+
+    <string name="checker_vpn_known_apps_none">已知 VPN/代理应用和 VpnService 提供方：未发现</string>
+    <string name="checker_vpn_installed_app">已安装应用：%1$s（%2$s）</string>
+    <string name="checker_vpn_declares_service">应用声明了 VpnService：%1$s（%2$s）</string>
+</resources>

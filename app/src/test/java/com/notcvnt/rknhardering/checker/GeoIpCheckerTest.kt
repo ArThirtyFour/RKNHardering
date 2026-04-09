@@ -2,6 +2,7 @@ package com.notcvnt.rknhardering.checker
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.EvidenceSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,12 +61,13 @@ class GeoIpCheckerTest {
         )
 
         val infoFindings = result.findings.filter { it.isInformational }
+        val infoDescriptions = infoFindings.map { it.description }
         assertEquals(5, infoFindings.size)
-        assertTrue(infoFindings.any { it.description.startsWith("IP:") })
-        assertTrue(infoFindings.any { it.description.startsWith("Страна:") })
-        assertTrue(infoFindings.any { it.description.startsWith("ISP:") })
-        assertTrue(infoFindings.any { it.description.startsWith("Организация:") })
-        assertTrue(infoFindings.any { it.description.startsWith("ASN:") })
+        assertTrue(infoDescriptions.contains(context.getString(R.string.checker_geo_info_ip, "1.2.3.4")))
+        assertTrue(infoDescriptions.contains(context.getString(R.string.checker_geo_info_country, "Russia", "RU")))
+        assertTrue(infoDescriptions.contains(context.getString(R.string.checker_geo_info_isp, "Test ISP")))
+        assertTrue(infoDescriptions.contains(context.getString(R.string.checker_geo_info_org, "Test Org")))
+        assertTrue(infoDescriptions.contains(context.getString(R.string.checker_geo_info_asn, "AS999")))
     }
 
     @Test
@@ -281,7 +283,8 @@ class GeoIpCheckerTest {
 
         assertTrue(
             result.findings.any {
-                it.description == "IP принадлежит хостинг-провайдеру: да (2/2: ipapi.is, iplocate.io)"
+                it.description == context.getString(R.string.checker_geo_hosting_prefix, context.getString(R.string.checker_yes)) +
+                    " (2/2: ipapi.is, iplocate.io)"
             },
         )
     }

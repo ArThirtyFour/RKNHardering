@@ -1,5 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.DnsClassification
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.InterfaceAddressSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.NetworkSnapshot
@@ -9,8 +11,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class IndirectSignsCheckerTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `classifies loopback dns`() {
@@ -53,6 +60,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `loopback dns on active vpn is detected`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -80,6 +88,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `vpn replacing public dns yields needs review`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -107,6 +116,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `shared ula dns across vpn and underlying prefixes stays clear`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -135,6 +145,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `shared carrier grade nat dns across vpn and underlying prefixes stays clear`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -163,6 +174,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `private dns on local non vpn prefix stays clear`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -183,6 +195,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `private dns on different underlying prefix stays detected on active vpn`() {
         val evaluation = IndirectSignsChecker.checkDns(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -211,6 +224,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `default route on non standard interface is detected`() {
         val evaluation = IndirectSignsChecker.checkRoutingTable(
+            context,
             listOf(
                 snapshot(
                     isActive = true,
@@ -228,6 +242,7 @@ class IndirectSignsCheckerTest {
     @Test
     fun `split tunneling route pattern is detected`() {
         val evaluation = IndirectSignsChecker.checkRoutingTable(
+            context,
             listOf(
                 snapshot(
                     isActive = true,

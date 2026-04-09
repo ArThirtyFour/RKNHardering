@@ -1,6 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
 import android.content.Context
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
@@ -39,11 +40,11 @@ object VpnCheckRunner {
         onUpdate: (suspend (CheckUpdate) -> Unit)? = null,
     ): CheckResult = coroutineScope {
         val geoIpDeferred = if (settings.networkRequestsEnabled) {
-            async { GeoIpChecker.check(settings.resolverConfig) }
+            async { GeoIpChecker.check(context, settings.resolverConfig) }
         } else null
 
         val ipComparisonDeferred = if (settings.networkRequestsEnabled) {
-            async { IpComparisonChecker.check(resolverConfig = settings.resolverConfig) }
+            async { IpComparisonChecker.check(context, resolverConfig = settings.resolverConfig) }
         } else null
 
         val directDeferred = async { DirectSignsChecker.check(context) }
@@ -111,14 +112,14 @@ object VpnCheckRunner {
             detected = false,
             summary = "",
             ruGroup = IpCheckerGroupResult(
-                title = "RU-чекеры",
+                title = context.getString(R.string.checker_ip_comp_ru_checkers),
                 detected = false,
                 statusLabel = "",
                 summary = "",
                 responses = emptyList(),
             ),
             nonRuGroup = IpCheckerGroupResult(
-                title = "Не-RU чекеры",
+                title = context.getString(R.string.checker_ip_comp_non_ru_checkers),
                 detected = false,
                 statusLabel = "",
                 summary = "",
@@ -129,6 +130,8 @@ object VpnCheckRunner {
             proxyEndpoint = null,
             directIp = null,
             proxyIp = null,
+            vpnNetworkIp = null,
+            underlyingIp = null,
             xrayApiScanResult = null,
             findings = emptyList(),
             detected = false,

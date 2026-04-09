@@ -3,6 +3,7 @@ package com.notcvnt.rknhardering.checker
 import android.content.Context
 import android.net.ConnectivityManager
 import android.os.Build
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.ActiveVpnApp
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
@@ -135,16 +136,16 @@ object IndirectSignsChecker {
         detected = detected || notVpnOutcome.detected
         needsReview = needsReview || notVpnOutcome.needsReview
 
-        detected = checkNetworkInterfaces(findings, evidence) || detected
-        detected = checkMtu(findings, evidence) || detected
+        detected = checkNetworkInterfaces(context, findings, evidence) || detected
+        detected = checkMtu(context, findings, evidence) || detected
 
-        val routingOutcome = checkRoutingTable(networkSnapshots)
+        val routingOutcome = checkRoutingTable(context, networkSnapshots)
         findings += routingOutcome.findings
         evidence += routingOutcome.evidence
         detected = detected || routingOutcome.detected
         needsReview = needsReview || routingOutcome.needsReview
 
-        val dnsOutcome = checkDns(networkSnapshots)
+        val dnsOutcome = checkDns(context, networkSnapshots)
         findings += dnsOutcome.findings
         evidence += dnsOutcome.evidence
         detected = detected || dnsOutcome.detected
@@ -156,16 +157,16 @@ object IndirectSignsChecker {
         detected = detected || proxyTechnicalOutcome.detected
         needsReview = needsReview || proxyTechnicalOutcome.needsReview
 
-        val dumpsysVpnOutcome = checkDumpsysVpn(findings, evidence, activeApps)
+        val dumpsysVpnOutcome = checkDumpsysVpn(context, findings, evidence, activeApps)
         detected = detected || dumpsysVpnOutcome.detected
         needsReview = needsReview || dumpsysVpnOutcome.needsReview
 
-        val dumpsysServiceOutcome = checkDumpsysVpnService(findings, evidence, activeApps)
+        val dumpsysServiceOutcome = checkDumpsysVpnService(context, findings, evidence, activeApps)
         detected = detected || dumpsysServiceOutcome.detected
         needsReview = needsReview || dumpsysServiceOutcome.needsReview
 
         return CategoryResult(
-            name = "Косвенные признаки",
+            name = context.getString(R.string.checker_indirect_category_name),
             detected = detected,
             findings = findings,
             needsReview = needsReview,
@@ -231,7 +232,13 @@ object IndirectSignsChecker {
         val hasNotVpn = capsString.contains("NOT_VPN")
         findings.add(
             Finding(
-                description = "Capability NOT_VPN: ${if (hasNotVpn) "присутствует" else "отсутствует (подозрительно)"}",
+                description = context.getString(
+                    R.string.checker_indirect_capability_not_vpn,
+                    context.getString(
+                        if (hasNotVpn) R.string.checker_indirect_present
+                        else R.string.checker_indirect_absent_suspicious,
+                    ),
+                ),
                 detected = !hasNotVpn,
                 source = EvidenceSource.INDIRECT_NETWORK_CAPABILITIES,
                 confidence = (!hasNotVpn).takeIf { it }?.let { EvidenceConfidence.MEDIUM },
@@ -251,6 +258,7 @@ object IndirectSignsChecker {
     }
 
     private fun checkNetworkInterfaces(
+        context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
     ): Boolean {
@@ -261,14 +269,14 @@ object IndirectSignsChecker {
             }
 
             if (vpnInterfaces.isEmpty()) {
-                findings.add(Finding("VPN-интерфейсы (tun/tap/wg/ppp/ipsec): не обнаружены"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_no_vpn_interfaces)))
                 return false
             }
 
             for (iface in vpnInterfaces) {
                 findings.add(
                     Finding(
-                        description = "VPN-интерфейс обнаружен: ${iface.name}",
+                        description = context.getString(R.string.checker_indirect_vpn_interface_found, iface.name),
                         detected = true,
                         source = EvidenceSource.NETWORK_INTERFACE,
                         confidence = EvidenceConfidence.MEDIUM,
@@ -285,12 +293,13 @@ object IndirectSignsChecker {
             }
             true
         } catch (e: Exception) {
-            findings.add(Finding("Ошибка при проверке интерфейсов: ${e.message}"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_interface_error, e.message)))
             false
         }
     }
 
     private fun checkMtu(
+        context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
     ): Boolean {
@@ -307,7 +316,11 @@ object IndirectSignsChecker {
 
                 findings.add(
                     Finding(
-                        description = "MTU аномалия: ${iface.name} MTU=$mtu (< 1500)",
+                        description = context.getString(
+                            R.string.checker_indirect_mtu_anomaly,
+                            iface.name,
+                            mtu,
+                        ),
                         detected = true,
                         source = EvidenceSource.NETWORK_INTERFACE,
                         confidence = EvidenceConfidence.MEDIUM,
@@ -332,7 +345,11 @@ object IndirectSignsChecker {
             for (iface in nonVpnLowMtu) {
                 findings.add(
                     Finding(
-                        description = "MTU аномалия: нестандартный интерфейс ${iface.name} MTU=${iface.mtu}",
+                        description = context.getString(
+                            R.string.checker_indirect_mtu_anomaly_nonstandard,
+                            iface.name,
+                            iface.mtu,
+                        ),
                         detected = true,
                         source = EvidenceSource.NETWORK_INTERFACE,
                         confidence = EvidenceConfidence.LOW,
@@ -350,17 +367,17 @@ object IndirectSignsChecker {
             }
 
             if (!detected) {
-                findings.add(Finding("MTU: аномалий не обнаружено"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_mtu_no_anomalies)))
             }
 
             detected
         } catch (e: Exception) {
-            findings.add(Finding("Ошибка при проверке MTU: ${e.message}"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_mtu_error, e.message)))
             false
         }
     }
 
-    internal fun checkRoutingTable(networkSnapshots: List<NetworkSnapshot>): RoutingEvaluation {
+    internal fun checkRoutingTable(context: Context, networkSnapshots: List<NetworkSnapshot>): RoutingEvaluation {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
         var detected = false
@@ -371,13 +388,20 @@ object IndirectSignsChecker {
             for (route in defaultRoutes) {
                 val iface = route.interfaceName
                 if (iface != null && isStandardInterface(iface) && !snapshot.isVpn) {
-                    findings.add(Finding("Маршрут по умолчанию: $iface (стандартный)"))
+                    findings.add(
+                        Finding(
+                            context.getString(R.string.checker_indirect_default_route_standard, iface),
+                        ),
+                    )
                     continue
                 }
 
                 findings.add(
                     Finding(
-                        description = "Маршрут по умолчанию через нестандартный интерфейс: ${iface ?: "N/A"}",
+                        description = context.getString(
+                            R.string.checker_indirect_default_route_nonstandard,
+                            iface ?: "N/A",
+                        ),
                         detected = true,
                         source = EvidenceSource.ROUTING,
                         confidence = EvidenceConfidence.MEDIUM,
@@ -403,7 +427,7 @@ object IndirectSignsChecker {
                 }
                 findings.add(
                     Finding(
-                        description = "Выделенные маршруты через VPN/нестандартный интерфейс: $routePreview",
+                        description = context.getString(R.string.checker_indirect_dedicated_routes, routePreview),
                         detected = true,
                         source = EvidenceSource.ROUTING,
                         confidence = EvidenceConfidence.MEDIUM,
@@ -425,13 +449,20 @@ object IndirectSignsChecker {
         if (snapshotsWithRoutes.none { snapshot -> snapshot.routes.any { it.isDefault } } && procDefaultInterfaces.isNotEmpty()) {
             for (iface in procDefaultInterfaces) {
                 if (isStandardInterface(iface)) {
-                    findings.add(Finding("Маршрут по умолчанию (/proc/net/route): $iface (стандартный)"))
+                    findings.add(
+                        Finding(
+                            context.getString(R.string.checker_indirect_proc_default_route_standard, iface),
+                        ),
+                    )
                     continue
                 }
 
                 findings.add(
                     Finding(
-                        description = "Маршрут по умолчанию (/proc/net/route) через нестандартный интерфейс: $iface",
+                        description = context.getString(
+                            R.string.checker_indirect_proc_default_route_nonstandard,
+                            iface,
+                        ),
                         detected = true,
                         source = EvidenceSource.ROUTING,
                         confidence = EvidenceConfidence.MEDIUM,
@@ -462,7 +493,7 @@ object IndirectSignsChecker {
         if (hasVpnRoutes && hasUnderlyingDefaultRoute) {
             findings.add(
                 Finding(
-                    description = "Маршрутизация указывает на split tunneling: одновременно видны direct и tunnel routes",
+                    description = context.getString(R.string.checker_indirect_split_tunnel_routes),
                     detected = true,
                     source = EvidenceSource.ROUTING,
                     confidence = EvidenceConfidence.MEDIUM,
@@ -480,11 +511,11 @@ object IndirectSignsChecker {
         }
 
         if (snapshotsWithRoutes.none { snapshot -> snapshot.routes.any { it.gateway != null } }) {
-            findings.add(Finding("Маршрут до шлюза провайдера: не удалось оценить через API Android"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_gateway_route_unavailable)))
         }
 
         if (!detected && findings.isEmpty()) {
-            findings.add(Finding("Маршрутизация: аномалий не обнаружено"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_routing_no_anomalies)))
         }
 
         return RoutingEvaluation(
@@ -495,7 +526,7 @@ object IndirectSignsChecker {
         )
     }
 
-    internal fun checkDns(networkSnapshots: List<NetworkSnapshot>): DnsEvaluation {
+    internal fun checkDns(context: Context, networkSnapshots: List<NetworkSnapshot>): DnsEvaluation {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
         var detected = false
@@ -503,12 +534,12 @@ object IndirectSignsChecker {
 
         val activeSnapshot = networkSnapshots.firstOrNull { it.isActive }
         if (activeSnapshot == null) {
-            findings.add(Finding("DNS: активная сеть не найдена"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_dns_no_active_network)))
             return DnsEvaluation(findings, evidence, detected = false, needsReview = false)
         }
 
         if (activeSnapshot.dnsServers.isEmpty()) {
-            findings.add(Finding("DNS серверы: не обнаружены"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_dns_servers_not_found)))
             return DnsEvaluation(findings, evidence, detected = false, needsReview = false)
         }
 
@@ -524,7 +555,7 @@ object IndirectSignsChecker {
                 DnsClassification.LOOPBACK -> {
                     findings.add(
                         Finding(
-                            description = "DNS указывает на localhost: $dns (типично для VPN/локального proxy)",
+                            description = context.getString(R.string.checker_indirect_dns_localhost, dns),
                             detected = true,
                             source = EvidenceSource.DNS,
                             confidence = EvidenceConfidence.HIGH,
@@ -543,17 +574,19 @@ object IndirectSignsChecker {
 
                 DnsClassification.PRIVATE_NETWORK -> {
                     if (isInheritedPrivateDns(dns, activeSnapshot, underlyingSnapshots, activeVpn)) {
-                        findings.add(Finding("DNS: $dns (наследуется из той же приватной подсети основной сети)"))
+                        findings.add(Finding(context.getString(R.string.checker_indirect_dns_inherited_private, dns)))
                         continue
                     }
 
                     val vpnAssigned = activeVpn && (changedFromUnderlying || routeViaVpnInterface)
+                    val privateDnsDescription = if (changedFromUnderlying) {
+                        context.getString(R.string.checker_indirect_dns_private_changed, dns)
+                    } else {
+                        context.getString(R.string.checker_indirect_dns_private, dns)
+                    }
                     findings.add(
                         Finding(
-                            description = buildString {
-                                append("DNS в приватной подсети: $dns")
-                                if (changedFromUnderlying) append(" (отличается от underlying сети)")
-                            },
+                            description = privateDnsDescription,
                             detected = vpnAssigned,
                             needsReview = !vpnAssigned,
                             source = EvidenceSource.DNS,
@@ -578,7 +611,7 @@ object IndirectSignsChecker {
                     if (activeVpn && changedFromUnderlying) {
                         findings.add(
                             Finding(
-                                description = "DNS заменён при активном VPN: $dns",
+                                description = context.getString(R.string.checker_indirect_dns_replaced_vpn, dns),
                                 needsReview = true,
                                 source = EvidenceSource.DNS,
                                 confidence = EvidenceConfidence.LOW,
@@ -594,13 +627,15 @@ object IndirectSignsChecker {
                         )
                         needsReview = true
                     } else if (activeVpn && underlyingDns.isEmpty()) {
-                        findings.add(Finding("DNS: $dns (источник не удалось сопоставить с underlying сетью)"))
+                        findings.add(Finding(context.getString(R.string.checker_indirect_dns_source_unknown, dns)))
                     } else {
-                        findings.add(Finding("DNS: $dns"))
+                        findings.add(Finding(context.getString(R.string.checker_indirect_dns_plain, dns)))
                     }
                 }
 
-                DnsClassification.LINK_LOCAL -> findings.add(Finding("DNS: $dns (link-local)"))
+                DnsClassification.LINK_LOCAL -> {
+                    findings.add(Finding(context.getString(R.string.checker_indirect_dns_link_local, dns)))
+                }
             }
         }
 
@@ -617,7 +652,11 @@ object IndirectSignsChecker {
 
         for (packageName in installedProxyTools) {
             val signature = PROXY_TOOL_SIGNATURES.firstOrNull { it.packageName == packageName } ?: continue
-            val description = "Установлена proxy-утилита: ${signature.appName} (${signature.packageName})"
+            val description = context.getString(
+                R.string.checker_indirect_proxy_tool_installed,
+                signature.appName,
+                signature.packageName,
+            )
             findings.add(
                 Finding(
                     description = description,
@@ -647,7 +686,12 @@ object IndirectSignsChecker {
         }
         if (loopbackListeners.isNotEmpty()) {
             for (listener in loopbackListeners.distinctBy { Triple(it.protocol, it.host, it.port) }) {
-                val description = "Local listener на proxy-порту: ${listener.host}:${listener.port}/${listener.protocol}"
+                val description = context.getString(
+                    R.string.checker_indirect_local_listener,
+                    listener.host,
+                    listener.port,
+                    listener.protocol,
+                )
                 findings.add(
                     Finding(
                         description = description,
@@ -673,7 +717,10 @@ object IndirectSignsChecker {
             if (localhostHighPorts >= 3) {
                 findings.add(
                     Finding(
-                        description = "Обнаружено несколько localhost listeners на высоких портах: $localhostHighPorts",
+                        description = context.getString(
+                            R.string.checker_indirect_many_localhost_listeners,
+                            localhostHighPorts,
+                        ),
                         needsReview = true,
                         source = EvidenceSource.PROXY_TECHNICAL_SIGNAL,
                         confidence = EvidenceConfidence.LOW,
@@ -692,12 +739,12 @@ object IndirectSignsChecker {
         }
 
         if (installedProxyTools.isEmpty() && listeners.isEmpty()) {
-            findings.add(Finding("Дополнительные proxy-технические признаки: не обнаружены"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_no_proxy_technical)))
         }
 
         findings.add(
             Finding(
-                description = "Проверки процессов, iptables/pf и системных сертификатов ограничены без root/privileged access",
+                description = context.getString(R.string.checker_indirect_limited_checks),
             ),
         )
 
@@ -897,6 +944,7 @@ object IndirectSignsChecker {
     }
 
     private fun checkDumpsysVpn(
+        context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
         activeApps: MutableList<ActiveVpnApp>,
@@ -908,13 +956,13 @@ object IndirectSignsChecker {
             process.waitFor()
 
             if (VpnDumpsysParser.isUnavailable(output)) {
-                findings.add(Finding("dumpsys vpn_management: недоступен"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_vpn_unavailable)))
                 return SignalOutcome()
             }
 
             val records = VpnDumpsysParser.parseVpnManagement(output)
             if (records.isEmpty()) {
-                findings.add(Finding("dumpsys vpn_management: активных VPN нет"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_vpn_none)))
                 return SignalOutcome()
             }
 
@@ -927,14 +975,10 @@ object IndirectSignsChecker {
                     record.packageName != null -> EvidenceConfidence.MEDIUM
                     else -> EvidenceConfidence.LOW
                 }
+                val familySuffix = signature?.family?.let { " [$it]" }.orEmpty()
                 val description = buildString {
-                    append("VPN management: ")
-                    append(record.rawLine)
-                    signature?.family?.let {
-                        append(" [")
-                        append(it)
-                        append("]")
-                    }
+                    append(context.getString(R.string.checker_indirect_dumpsys_vpn_line, record.rawLine))
+                    append(familySuffix)
                 }
                 findings.add(
                     Finding(
@@ -973,12 +1017,13 @@ object IndirectSignsChecker {
 
             SignalOutcome(detected = detected, needsReview = needsReview)
         } catch (e: Exception) {
-            findings.add(Finding("dumpsys vpn_management: ${e.message}"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_vpn_error, e.message)))
             SignalOutcome()
         }
     }
 
     private fun checkDumpsysVpnService(
+        context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
         activeApps: MutableList<ActiveVpnApp>,
@@ -989,13 +1034,13 @@ object IndirectSignsChecker {
             process.waitFor()
 
             if (VpnDumpsysParser.isUnavailable(output)) {
-                findings.add(Finding("dumpsys activity services VpnService: недоступен"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_service_unavailable)))
                 return SignalOutcome()
             }
 
             val records = VpnDumpsysParser.parseVpnServices(output)
             if (records.isEmpty()) {
-                findings.add(Finding("Активные VpnService: не обнаружены"))
+                findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_service_none)))
                 return SignalOutcome()
             }
 
@@ -1013,14 +1058,10 @@ object IndirectSignsChecker {
                 } else {
                     record.rawLine
                 }
+                val familySuffix = signature?.family?.let { " [$it]" }.orEmpty()
                 val description = buildString {
-                    append("VpnService активен: ")
-                    append(serviceDisplay)
-                    signature?.family?.let {
-                        append(" [")
-                        append(it)
-                        append("]")
-                    }
+                    append(context.getString(R.string.checker_indirect_dumpsys_service_active, serviceDisplay))
+                    append(familySuffix)
                 }
                 findings.add(
                     Finding(
@@ -1059,7 +1100,7 @@ object IndirectSignsChecker {
 
             SignalOutcome(detected = detected, needsReview = needsReview)
         } catch (e: Exception) {
-            findings.add(Finding("dumpsys activity services: ${e.message}"))
+            findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_service_error, e.message)))
             SignalOutcome()
         }
     }

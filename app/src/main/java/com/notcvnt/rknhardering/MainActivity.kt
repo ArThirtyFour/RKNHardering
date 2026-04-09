@@ -23,6 +23,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.text.BidiFormatter
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
@@ -1055,14 +1056,14 @@ class MainActivity : AppCompatActivity() {
         infoSection.removeAllViews()
         infoSection.visibility = if (infoFindings.isNotEmpty()) View.VISIBLE else View.GONE
         for (finding in infoFindings) {
-            val parts = finding.description.split(": ", limit = 2)
-            if (parts.size == 2) {
-                val value = if (privacyMode && parts[0].trim().equals("IP", ignoreCase = true)) {
-                    maskIp(parts[1].trim())
+            val parts = splitInfoFinding(finding.description)
+            if (parts != null) {
+                val value = if (privacyMode && parts.first.equals("IP", ignoreCase = true)) {
+                    maskIp(parts.second)
                 } else {
-                    parts[1]
+                    parts.second
                 }
-                infoSection.addView(createInfoView(parts[0], value))
+                infoSection.addView(createInfoView(parts.first, value))
             } else {
                 infoSection.addView(createFindingView(finding, privacyMode))
             }
@@ -1123,12 +1124,14 @@ class MainActivity : AppCompatActivity() {
 
         val descriptionText = if (privacyMode) maskIpsInText(finding.description) else finding.description
         val description = TextView(this).apply {
-            text = descriptionText
+            text = wrapForDisplay(descriptionText)
             textSize = 13f
             val tv = TypedValue()
             this@MainActivity.theme.resolveAttribute(android.R.attr.textColorPrimary, tv, true)
             setTextColor(ContextCompat.getColor(this@MainActivity, tv.resourceId))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            textDirection = View.TEXT_DIRECTION_LOCALE
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
         }
 
         row.addView(indicator)
@@ -1144,24 +1147,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createInfoView(label: String, value: String): View {
+        val rtl = isRtlLayout()
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 4.dp, 0, 4.dp)
+            orientation = if (rtl) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            gravity = if (rtl) Gravity.END else Gravity.CENTER_VERTICAL
+            setPadding(0, 4.dp, 0, if (rtl) 6.dp else 4.dp)
         }
 
         val labelView = TextView(this).apply {
-            text = label
+            text = wrapForDisplay(label)
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
-            isAllCaps = true
+            isAllCaps = !rtl
             letterSpacing = 0.05f
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.38f)
+            layoutParams = if (rtl) {
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            } else {
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.38f)
+            }
+            textDirection = View.TEXT_DIRECTION_LOCALE
+            textAlignment = if (rtl) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
         }
 
         val valueView = TextView(this).apply {
-            text = value
+            text = wrapForDisplay(value)
             textSize = 13f
             val tv = TypedValue()
             this@MainActivity.theme.resolveAttribute(android.R.attr.textColorPrimary, tv, true)
@@ -1170,13 +1183,50 @@ class MainActivity : AppCompatActivity() {
             } else if (tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
                 setTextColor(tv.data)
             }
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.62f)
+            layoutParams = if (rtl) {
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = 2.dp
+                }
+            } else {
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.62f)
+            }
+            textDirection = View.TEXT_DIRECTION_LOCALE
+            textAlignment = if (rtl) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
         }
 
         row.addView(labelView)
         row.addView(valueView)
         return row
     }
+
+    private fun splitInfoFinding(description: String): Pair<String, String>? {
+        val separatorIndex = sequenceOf(
+            description.indexOf(": "),
+            description.indexOf('：'),
+            description.indexOf(':'),
+        ).filter { it >= 0 }.minOrNull() ?: return null
+        val separatorLength = when {
+            description.startsWith(": ", separatorIndex) -> 2
+            else -> 1
+        }
+        val label = description.substring(0, separatorIndex).trim()
+        val value = description.substring(separatorIndex + separatorLength).trim()
+        if (label.isBlank() || value.isBlank()) return null
+        return label to value
+    }
+
+    private fun wrapForDisplay(text: String): String {
+        return if (isRtlLayout()) {
+            BidiFormatter.getInstance(true).unicodeWrap(text)
+        } else {
+            text
+        }
+    }
+
+    private fun isRtlLayout(): Boolean = resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
 
     private fun createIpCheckerGroupView(
         group: IpCheckerGroupResult,

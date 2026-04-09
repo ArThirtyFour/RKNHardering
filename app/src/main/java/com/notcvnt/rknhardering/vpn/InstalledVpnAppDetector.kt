@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
@@ -27,13 +28,13 @@ object InstalledVpnAppDetector {
         val evidence = mutableListOf<EvidenceItem>()
         val matchedApps = linkedMapOf<String, MatchedVpnApp>()
 
-        detectKnownInstalledPackages(pm, findings, evidence, matchedApps)
-        detectDeclaredVpnServices(pm, findings, evidence, matchedApps)
+        detectKnownInstalledPackages(context, pm, findings, evidence, matchedApps)
+        detectDeclaredVpnServices(context, pm, findings, evidence, matchedApps)
 
         if (matchedApps.isEmpty()) {
             findings.add(
                 Finding(
-                    description = "Известные VPN/Proxy-приложения и VpnService-провайдеры: не обнаружены",
+                    description = context.getString(R.string.checker_vpn_known_apps_none),
                 ),
             )
         }
@@ -47,6 +48,7 @@ object InstalledVpnAppDetector {
     }
 
     private fun detectKnownInstalledPackages(
+        context: Context,
         pm: PackageManager,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
@@ -59,7 +61,11 @@ object InstalledVpnAppDetector {
                 VpnAppKind.TARGETED_BYPASS -> EvidenceConfidence.MEDIUM
                 VpnAppKind.GENERIC_VPN -> EvidenceConfidence.LOW
             }
-            val description = "Установлено приложение: ${signature.appName} (${signature.packageName})"
+            val description = context.getString(
+                R.string.checker_vpn_installed_app,
+                signature.appName,
+                signature.packageName,
+            )
 
             findings.add(
                 Finding(
@@ -98,6 +104,7 @@ object InstalledVpnAppDetector {
     }
 
     private fun detectDeclaredVpnServices(
+        context: Context,
         pm: PackageManager,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
@@ -114,11 +121,13 @@ object InstalledVpnAppDetector {
             }
             val serviceSuffix = serviceNames.takeIf { it.isNotEmpty() }?.joinToString()
             val description = buildString {
-                append("Приложение объявляет VpnService: ")
-                append(appName)
-                append(" (")
-                append(packageName)
-                append(")")
+                append(
+                    context.getString(
+                        R.string.checker_vpn_declares_service,
+                        appName,
+                        packageName,
+                    ),
+                )
                 if (!serviceSuffix.isNullOrBlank()) {
                     append(" -> ")
                     append(serviceSuffix)

@@ -43,7 +43,7 @@ object VerdictNarrativeBuilder {
     private val ipv6Regex = Regex("""(?<![A-Za-z0-9])(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4}(?![A-Za-z0-9])""")
 
     fun build(context: Context, result: CheckResult, privacyMode: Boolean = false): VerdictNarrative {
-        val snapshot = collectSnapshot(result)
+        val snapshot = collectSnapshot(context, result)
         val exposureStatus = determineExposureStatus(snapshot)
 
         return VerdictNarrative(
@@ -55,7 +55,7 @@ object VerdictNarrativeBuilder {
         )
     }
 
-    private fun collectSnapshot(result: CheckResult): Snapshot {
+    private fun collectSnapshot(context: Context, result: CheckResult): Snapshot {
         val xrayApi = result.bypassResult.xrayApiScanResult
         val gatewayLeakFinding = result.bypassResult.findings.firstOrNull {
             it.source == EvidenceSource.VPN_GATEWAY_LEAK && it.detected
@@ -66,10 +66,6 @@ object VerdictNarrativeBuilder {
                 extractIps(it.description).isNotEmpty()
         }
 
-        val defaultNonVpnIp = result.bypassResult.findings.firstOrNull {
-            it.description.startsWith("Default non-VPN IP:")
-        }?.description?.let(::extractIps)?.firstOrNull()
-
         return Snapshot(
             remoteEndpoints = xrayApi?.outbounds.orEmpty().mapNotNull(::formatRemoteEndpoint).distinct(),
             localApiEndpoint = xrayApi?.endpoint?.let { formatHostPort(it.host, it.port) },
@@ -77,11 +73,12 @@ object VerdictNarrativeBuilder {
                 "${it.type.name} ${formatHostPort(it.host, it.port)}"
             },
             vpnNetworkIp = gatewayLeakIps.getOrNull(0)
+                ?: result.bypassResult.vpnNetworkIp
                 ?: vpnProbeFinding?.description?.let(::extractIps)?.firstOrNull(),
-            realIp = gatewayLeakIps.getOrNull(1) ?: defaultNonVpnIp,
+            realIp = gatewayLeakIps.getOrNull(1) ?: result.bypassResult.underlyingIp,
             directIp = result.bypassResult.directIp,
             proxyIp = result.bypassResult.proxyIp,
-            geoIp = extractGeoIp(result.geoIp),
+            geoIp = extractGeoIp(context, result.geoIp),
             ruCheckerIp = result.ipComparison.ruGroup.canonicalIp,
             nonRuCheckerIp = result.ipComparison.nonRuGroup.canonicalIp,
             technicalSignalsPresent = hasTechnicalSignals(result),
@@ -238,10 +235,11 @@ object VerdictNarrativeBuilder {
         return reasons.take(5)
     }
 
-    private fun extractGeoIp(result: CategoryResult): String? {
+    private fun extractGeoIp(context: Context, result: CategoryResult): String? {
+        val prefix = context.getString(R.string.checker_geo_info_ip, "").trim()
         return result.findings.firstOrNull {
-            it.isInformational && it.description.startsWith("IP:")
-        }?.description?.substringAfter("IP:")?.trim()
+            it.isInformational && it.description.startsWith(prefix)
+        }?.description?.removePrefix(prefix)?.trim()
     }
 
     private fun hasTechnicalSignals(result: CheckResult): Boolean {

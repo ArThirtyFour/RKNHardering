@@ -1,11 +1,18 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.notcvnt.rknhardering.model.EvidenceSource
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class DirectSignsCheckerTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `matches documented proxy ports`() {
@@ -33,7 +40,7 @@ class DirectSignsCheckerTest {
 
     @Test
     fun `host and port are treated as direct system proxy evidence`() {
-        val result = DirectSignsChecker.evaluateProxyEndpoint("HTTP proxy", "127.0.0.1", "8080")
+        val result = DirectSignsChecker.evaluateProxyEndpoint(context, "HTTP proxy", "127.0.0.1", "8080")
 
         assertTrue(result.detected)
         assertFalse(result.needsReview)
@@ -42,7 +49,7 @@ class DirectSignsCheckerTest {
 
     @Test
     fun `host without valid port only needs review`() {
-        val result = DirectSignsChecker.evaluateProxyEndpoint("HTTP proxy", "127.0.0.1", null)
+        val result = DirectSignsChecker.evaluateProxyEndpoint(context, "HTTP proxy", "127.0.0.1", null)
 
         assertFalse(result.detected)
         assertTrue(result.needsReview)
@@ -52,7 +59,7 @@ class DirectSignsCheckerTest {
 
     @Test
     fun `known proxy port adds a dedicated finding`() {
-        val result = DirectSignsChecker.evaluateProxyEndpoint("SOCKS proxy", "127.0.0.1", "1080")
+        val result = DirectSignsChecker.evaluateProxyEndpoint(context, "SOCKS proxy", "127.0.0.1", "1080")
 
         assertTrue(result.detected)
         assertTrue(result.findings.any { it.description.contains("1080") && it.detected })

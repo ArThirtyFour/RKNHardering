@@ -41,6 +41,7 @@ data class Finding(
     val detected: Boolean = false,
     val needsReview: Boolean = false,
     val isInformational: Boolean = false,
+    val isError: Boolean = false,
     val source: EvidenceSource? = null,
     val confidence: EvidenceConfidence? = null,
     val family: String? = null,
@@ -86,7 +87,7 @@ data class CategoryResult(
     val activeApps: List<ActiveVpnApp> = emptyList(),
 ) {
     val hasError: Boolean
-        get() = findings.any { it.description.startsWith("Ошибка GeoIP:") }
+        get() = findings.any { it.isError }
 }
 
 enum class Verdict {
@@ -99,6 +100,8 @@ data class BypassResult(
     val proxyEndpoint: ProxyEndpoint?,
     val directIp: String?,
     val proxyIp: String?,
+    val vpnNetworkIp: String? = null,
+    val underlyingIp: String? = null,
     val xrayApiScanResult: XrayApiScanResult?,
     val findings: List<Finding>,
     val detected: Boolean,

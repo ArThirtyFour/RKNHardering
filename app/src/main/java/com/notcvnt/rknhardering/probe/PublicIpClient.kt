@@ -123,7 +123,7 @@ object PublicIpClient {
 
     private fun httpStatusLabel(code: Int): String? {
         return when (code) {
-            403 -> "Запрещено"
+            403 -> "Forbidden"
             else -> null
         }
     }

@@ -1,6 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
 import android.content.Context
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
@@ -72,8 +73,8 @@ object BypassChecker {
             onProgress?.invoke(
                 Progress(
                     line = ProgressLine.BYPASS,
-                    phase = "Сканирование портов",
-                    detail = "Поиск открытых прокси на localhost...",
+                    phase = context.getString(R.string.checker_bypass_progress_port_scan_phase),
+                    detail = context.getString(R.string.checker_bypass_progress_port_scan_detail),
                 ),
             )
             if (scanMode == ScanMode.POPULAR_ONLY) {
@@ -85,8 +86,12 @@ object BypassChecker {
                         onProgress?.invoke(
                             Progress(
                                 line = ProgressLine.BYPASS,
-                                phase = "Популярные порты",
-                                detail = "Порт ${progress.currentPort} ($percent%)",
+                                phase = context.getString(R.string.checker_bypass_progress_popular_ports),
+                                detail = context.getString(
+                                    R.string.checker_bypass_progress_port_detail,
+                                    progress.currentPort,
+                                    percent,
+                                ),
                             ),
                         )
                     },
@@ -97,15 +102,19 @@ object BypassChecker {
                     manualPort = null,
                     onProgress = { progress ->
                         val phaseText = when (progress.phase) {
-                            com.notcvnt.rknhardering.probe.ScanPhase.POPULAR_PORTS -> "Популярные порты"
-                            com.notcvnt.rknhardering.probe.ScanPhase.FULL_RANGE -> "Полное сканирование"
+                            ScanPhase.POPULAR_PORTS -> context.getString(R.string.checker_bypass_progress_popular_ports)
+                            ScanPhase.FULL_RANGE -> context.getString(R.string.checker_bypass_progress_full_scan)
                         }
                         val percent = if (progress.total > 0) (progress.scanned * 100 / progress.total) else 0
                         onProgress?.invoke(
                             Progress(
                                 line = ProgressLine.BYPASS,
                                 phase = phaseText,
-                                detail = "Порт ${progress.currentPort} ($percent%)",
+                                detail = context.getString(
+                                    R.string.checker_bypass_progress_port_detail,
+                                    progress.currentPort,
+                                    percent,
+                                ),
                             ),
                         )
                     },
@@ -118,7 +127,7 @@ object BypassChecker {
                 Progress(
                     line = ProgressLine.XRAY_API,
                     phase = "Xray API",
-                    detail = "Поиск gRPC API на localhost...",
+                    detail = context.getString(R.string.checker_bypass_progress_xray_detail),
                 ),
             )
             xrayScanner.findXrayApi { progress ->
@@ -138,7 +147,7 @@ object BypassChecker {
                 Progress(
                     line = ProgressLine.UNDERLYING_NETWORK,
                     phase = "Underlying network",
-                    detail = "Проверка доступа к non-VPN сети...",
+                    detail = context.getString(R.string.checker_bypass_progress_underlying_detail),
                 ),
             )
             UnderlyingNetworkProber.probe(context)
@@ -148,9 +157,9 @@ object BypassChecker {
         val xrayApiScanResult = xrayDeferred.await()
         val underlyingResult = underlyingDeferred.await()
 
-        reportProxyResult(proxyEndpoint, findings, evidence)
-        reportXrayApiResult(xrayApiScanResult, findings, evidence)
-        val networkPathBypass = reportUnderlyingNetworkResult(underlyingResult, findings, evidence)
+        reportProxyResult(context, proxyEndpoint, findings, evidence)
+        reportXrayApiResult(context, xrayApiScanResult, findings, evidence)
+        val networkPathBypass = reportUnderlyingNetworkResult(context, underlyingResult, findings, evidence)
 
         var directIp: String? = null
         var proxyIp: String? = null
@@ -160,8 +169,8 @@ object BypassChecker {
             onProgress?.invoke(
                 Progress(
                     line = ProgressLine.BYPASS,
-                    phase = "Проверка IP",
-                    detail = "Получение прямого IP и IP через прокси...",
+                    phase = context.getString(R.string.checker_bypass_progress_ip_phase),
+                    detail = context.getString(R.string.checker_bypass_progress_ip_detail),
                 ),
             )
 
@@ -171,14 +180,15 @@ object BypassChecker {
             directIp = directDeferred.await().getOrNull()
             proxyIp = proxyIpDeferred.await().getOrNull()
 
-            findings.add(Finding("Прямой IP: ${directIp ?: "не удалось получить"}"))
-            findings.add(Finding("IP через прокси: ${proxyIp ?: "не удалось получить"}"))
+            val unavailable = context.getString(R.string.checker_bypass_ip_unavailable)
+            findings.add(Finding(context.getString(R.string.checker_bypass_direct_ip, directIp ?: unavailable)))
+            findings.add(Finding(context.getString(R.string.checker_bypass_proxy_ip, proxyIp ?: unavailable)))
 
             if (directIp != null && proxyIp != null && directIp != proxyIp) {
                 confirmedBypass = true
                 findings.add(
                     Finding(
-                        description = "Per-app split bypass: подтвержден (IP отличаются)",
+                        description = context.getString(R.string.checker_bypass_split_confirmed),
                         detected = true,
                         source = EvidenceSource.SPLIT_TUNNEL_BYPASS,
                         confidence = EvidenceConfidence.HIGH,
@@ -193,7 +203,7 @@ object BypassChecker {
                     ),
                 )
             } else if (directIp != null && proxyIp != null) {
-                findings.add(Finding("Per-app split отключен: IP совпадают"))
+                findings.add(Finding(context.getString(R.string.checker_bypass_split_disabled)))
             }
 
             // MTProto probe: if SOCKS5 proxy found but HTTP didn't work through it,
@@ -208,17 +218,21 @@ object BypassChecker {
                     Progress(
                         line = ProgressLine.BYPASS,
                         phase = "MTProto probe",
-                        detail = "Проверка Telegram DC через прокси...",
+                        detail = context.getString(R.string.checker_bypass_progress_mtproto_detail),
                     ),
                 )
                 val mtResult = MtProtoProber.probe(proxyEndpoint.host, proxyEndpoint.port)
                 if (mtResult.reachable) {
                     val addr = mtResult.targetAddress
+                    val targetAddress = addr?.let { "${it.address.hostAddress}:${it.port}" }
+                        ?: unavailable
                     findings.add(
                         Finding(
-                            description = "MTProto-прокси: Telegram DC доступен через " +
-                                "${formatHostPort(proxyEndpoint.host, proxyEndpoint.port)}" +
-                                " -> ${addr?.address?.hostAddress}:${addr?.port}",
+                            description = context.getString(
+                                R.string.checker_bypass_mtproto_reachable,
+                                formatHostPort(proxyEndpoint.host, proxyEndpoint.port),
+                                targetAddress,
+                            ),
                             detected = true,
                             source = EvidenceSource.LOCAL_PROXY,
                             confidence = EvidenceConfidence.HIGH,
@@ -226,7 +240,7 @@ object BypassChecker {
                         ),
                     )
                 } else {
-                    findings.add(Finding("MTProto probe: Telegram DC недоступен через прокси"))
+                    findings.add(Finding(context.getString(R.string.checker_bypass_mtproto_unreachable)))
                 }
             }
         }
@@ -238,6 +252,8 @@ object BypassChecker {
             proxyEndpoint = proxyEndpoint,
             directIp = directIp,
             proxyIp = proxyIp,
+            vpnNetworkIp = underlyingResult.vpnIp,
+            underlyingIp = underlyingResult.underlyingIp,
             xrayApiScanResult = xrayApiScanResult,
             findings = findings,
             detected = detected,
@@ -247,28 +263,32 @@ object BypassChecker {
     }
 
     private fun reportProxyResult(
+        context: Context,
         proxyEndpoint: ProxyEndpoint?,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
     ) {
         if (proxyEndpoint == null) {
-            findings.add(Finding("Открытые прокси на localhost: не обнаружены"))
+            findings.add(Finding(context.getString(R.string.checker_bypass_no_open_proxy)))
             return
         }
 
         val candidateFamilies = VpnAppCatalog.familiesForPort(proxyEndpoint.port)
         val familySuffix = candidateFamilies.takeIf { it.isNotEmpty() }?.joinToString()
         val description = buildString {
-            append("Открытый ")
-            append(proxyEndpoint.type.name)
-            append(" прокси: ")
-            append(formatHostPort(proxyEndpoint.host, proxyEndpoint.port))
+            append(
+                context.getString(
+                    R.string.checker_bypass_open_proxy,
+                    proxyEndpoint.type.name,
+                    formatHostPort(proxyEndpoint.host, proxyEndpoint.port),
+                ),
+            )
             if (!familySuffix.isNullOrBlank()) {
                 append(" [")
                 append(familySuffix)
                 append("]")
             }
-            append(" (требует подтверждения обхода)")
+            append(context.getString(R.string.checker_bypass_open_proxy_review_suffix))
         }
 
         findings.add(
@@ -292,19 +312,23 @@ object BypassChecker {
     }
 
     private fun reportXrayApiResult(
+        context: Context,
         xrayApiScanResult: XrayApiScanResult?,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
     ) {
         if (xrayApiScanResult == null) {
-            findings.add(Finding("Xray gRPC API: не обнаружен"))
+            findings.add(Finding(context.getString(R.string.checker_bypass_no_xray)))
             return
         }
 
         val ep = xrayApiScanResult.endpoint
         findings.add(
             Finding(
-                description = "Xray gRPC API: ${formatHostPort(ep.host, ep.port)}",
+                description = context.getString(
+                    R.string.checker_bypass_xray_api,
+                    formatHostPort(ep.host, ep.port),
+                ),
                 detected = true,
                 source = EvidenceSource.XRAY_API,
                 confidence = EvidenceConfidence.HIGH,
@@ -344,7 +368,10 @@ object BypassChecker {
         if (xrayApiScanResult.outbounds.size > 10) {
             findings.add(
                 Finding(
-                    description = "  ...ещё ${xrayApiScanResult.outbounds.size - 10} аутбаундов",
+                    description = context.getString(
+                        R.string.checker_bypass_extra_outbounds,
+                        xrayApiScanResult.outbounds.size - 10,
+                    ),
                     detected = true,
                     source = EvidenceSource.XRAY_API,
                     confidence = EvidenceConfidence.HIGH,
@@ -355,12 +382,13 @@ object BypassChecker {
     }
 
     internal fun reportUnderlyingNetworkResult(
+        context: Context,
         result: UnderlyingNetworkProber.ProbeResult,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
     ): Boolean {
         if (!result.vpnActive) {
-            findings.add(Finding("Underlying network: VPN не активен, проверка не требуется"))
+            findings.add(Finding(context.getString(R.string.checker_bypass_vpn_not_active)))
             return false
         }
 
@@ -370,8 +398,10 @@ object BypassChecker {
             result.vpnIp != null && result.activeNetworkIsVpn == false -> {
                 findings.add(
                     Finding(
-                        description = "VPN network binding: приложение получило IP ${result.vpnIp} " +
-                            "через явную привязку к VPN Network при non-VPN default сети",
+                        description = context.getString(
+                            R.string.checker_bypass_vpn_network_binding,
+                            result.vpnIp,
+                        ),
                         detected = true,
                         source = EvidenceSource.VPN_NETWORK_BINDING,
                         confidence = EvidenceConfidence.HIGH,
@@ -390,7 +420,7 @@ object BypassChecker {
             result.vpnIp != null -> {
                 findings.add(
                     Finding(
-                        description = "IP через явную привязку к VPN Network: ${result.vpnIp}",
+                        description = context.getString(R.string.checker_bypass_vpn_bound_ip, result.vpnIp),
                         isInformational = true,
                         source = EvidenceSource.VPN_NETWORK_BINDING,
                     ),
@@ -402,8 +432,10 @@ object BypassChecker {
             if (result.vpnIp != null) {
                 findings.add(
                     Finding(
-                        description = "TUN активный зонд: запрос через VPN Network вернул IP ${result.vpnIp}" +
-                            " (TUN — живой маршрутизируемый интерфейс)",
+                        description = context.getString(
+                            R.string.checker_bypass_tun_probe_success,
+                            result.vpnIp,
+                        ),
                         isInformational = true,
                         source = EvidenceSource.TUN_ACTIVE_PROBE,
                     ),
@@ -411,8 +443,7 @@ object BypassChecker {
             } else {
                 findings.add(
                     Finding(
-                        description = "TUN активный зонд: запрос через VPN Network недоступен" +
-                            " (интерфейс заблокирован или filtered)",
+                        description = context.getString(R.string.checker_bypass_tun_probe_failure),
                         isInformational = true,
                         source = EvidenceSource.TUN_ACTIVE_PROBE,
                     ),
@@ -424,7 +455,7 @@ object BypassChecker {
             if (result.underlyingIp != null) {
                 findings.add(
                     Finding(
-                        description = "Default non-VPN IP: ${result.underlyingIp}",
+                        description = context.getString(R.string.checker_bypass_default_non_vpn_ip, result.underlyingIp),
                         isInformational = true,
                     ),
                 )
@@ -433,7 +464,7 @@ object BypassChecker {
         }
 
         if (!result.underlyingReachable) {
-            findings.add(Finding("Underlying network: non-VPN сеть недоступна (full tunnel)"))
+            findings.add(Finding(context.getString(R.string.checker_bypass_underlying_unreachable)))
             return false
         }
 
@@ -441,10 +472,11 @@ object BypassChecker {
             result.vpnIp != result.underlyingIp
 
         if (ipsAreDifferent) {
-            val description = buildString {
-                append("VPN gateway leak: приложение может обойти VPN-туннель")
-                append(" (VPN IP: ${result.vpnIp}, реальный IP: ${result.underlyingIp})")
-            }
+            val description = context.getString(
+                R.string.checker_bypass_gateway_leak,
+                result.vpnIp,
+                result.underlyingIp,
+            )
             findings.add(
                 Finding(
                     description = description,
@@ -464,11 +496,8 @@ object BypassChecker {
             return true
         }
 
-        val infoDescription = buildString {
-            append("Underlying сеть доступна, но IP совпадает с VPN")
-            if (result.underlyingIp != null) append(" (${result.underlyingIp})")
-            append(": split tunnel не подтверждён")
-        }
+        val ipSuffix = result.underlyingIp?.let { " ($it)" }.orEmpty()
+        val infoDescription = context.getString(R.string.checker_bypass_underlying_same_ip, ipSuffix)
         findings.add(
             Finding(
                 description = infoDescription,

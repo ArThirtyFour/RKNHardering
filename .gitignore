@@ -18,6 +18,8 @@
 .android-home/
 .android-user-home/
 .gradle-user-home/
+/.gradle-home/
+**/.test-home/
 .kotlin/
 xray-protos/bin
 local.properties

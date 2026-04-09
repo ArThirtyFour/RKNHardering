@@ -1,0 +1,310 @@
+<resources>
+    <string name="app_name">RKNHardering</string>
+    <string name="github_repo_label">GitHub</string>
+    <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
+    <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
+
+    <string name="settings_title">تنظیمات</string>
+    <string name="settings_section_checks">بررسی‌ها</string>
+    <string name="settings_section_privacy">حریم خصوصی</string>
+    <string name="settings_section_appearance">ظاهر</string>
+    <string name="settings_section_about">درباره</string>
+    <string name="settings_split_tunnel">Split tunnel bypass</string>
+    <string name="settings_split_tunnel_desc">اسکن پورت زمان زیادی می‌گیرد</string>
+    <string name="settings_port_range">بازه پورت</string>
+    <string name="settings_port_range_desc">برای اسکن Split tunnel</string>
+    <string name="settings_port_popular">رایج</string>
+    <string name="settings_port_extended">گسترده</string>
+    <string name="settings_port_full">کامل</string>
+    <string name="settings_port_custom">سفارشی</string>
+    <string name="settings_network_requests">درخواست‌های شبکه</string>
+    <string name="settings_network_requests_desc">GeoIP، مقایسه IP، BeaconDB</string>
+    <string name="settings_network_disable_title">درخواست‌های شبکه غیرفعال شوند؟</string>
+    <string name="settings_network_disable_message">در صورت غیرفعال شدن:\n\n• بررسی‌های GeoIP اجرا نخواهند شد\n• مقایسه IP از طریق سرویس‌های خارجی غیرفعال می‌شود\n• مکان‌یابی از طریق BeaconDB (دکل‌ها/Wi-Fi) غیرفعال می‌شود\n\nفقط بررسی‌های محلی باقی می‌مانند: نشانه‌های مستقیم، نشانه‌های غیرمستقیم و اسکن پورت</string>
+    <string name="settings_network_disable_confirm">غیرفعال کردن</string>
+    <string name="settings_dns_resolver">DNS resolver</string>
+    <string name="settings_dns_resolver_desc">برای GeoIP، IP Comparison و BeaconDB استفاده می‌شود. DNS سیستمی Android را تغییر نمی‌دهد و روی بررسی‌های محلی DNS اثری ندارد.</string>
+    <string name="settings_dns_mode_system">سیستمی</string>
+    <string name="settings_dns_mode_direct">Direct DNS</string>
+    <string name="settings_dns_mode_doh">DoH</string>
+    <string name="settings_dns_preset_custom">سفارشی</string>
+    <string name="settings_dns_preset_cloudflare">Cloudflare</string>
+    <string name="settings_dns_preset_google">Google</string>
+    <string name="settings_dns_preset_yandex">Yandex</string>
+    <string name="settings_dns_direct_servers">سرورهای DNS</string>
+    <string name="settings_dns_direct_servers_hint">1.1.1.1, 1.0.0.1</string>
+    <string name="settings_dns_doh_url">نشانی DoH</string>
+    <string name="settings_dns_doh_url_hint">https://dns.google/dns-query</string>
+    <string name="settings_dns_bootstrap">IP های Bootstrap</string>
+    <string name="settings_dns_bootstrap_hint">8.8.8.8, 8.8.4.4</string>
+    <string name="settings_privacy_mode">حالت حریم خصوصی</string>
+    <string name="settings_privacy_mode_desc">IP به شکل 185.22.*.* نمایش داده می‌شود</string>
+    <string name="settings_theme">تم</string>
+    <string name="settings_theme_light">روشن</string>
+    <string name="settings_theme_dark">تیره</string>
+    <string name="settings_theme_system">سیستمی</string>
+    <string name="settings_language">زبان</string>
+    <string name="settings_language_system">سیستمی</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_ru">Русский</string>
+    <string name="settings_language_fa">فارسی</string>
+    <string name="settings_language_zh">中文</string>
+    <string name="settings_permissions">مجوزها</string>
+    <string name="settings_permissions_desc">مدیریت مجوزهای برنامه</string>
+    <string name="settings_github">GitHub</string>
+    <string name="settings_github_desc">xtclovver/RKNHardering</string>
+    <string name="settings_port_range_from">از</string>
+    <string name="settings_port_range_to">تا</string>
+
+    <string name="main_subtitle">خودآزمایی VPN/Proxy</string>
+    <string name="main_run_check">اجرای بررسی</string>
+    <string name="main_stop_check">توقف</string>
+    <string name="main_card_ip_comparison">مقایسه IP</string>
+    <string name="main_card_direct_signs">نشانه‌های مستقیم</string>
+    <string name="main_card_indirect_signs">نشانه‌های غیرمستقیم</string>
+    <string name="main_card_location_signals">نشانه‌های مکان</string>
+    <string name="main_verdict_details">جزئیات</string>
+
+    <string name="main_perm_title">مجوز اضافی</string>
+    <string name="main_perm_allow">اجازه دادن</string>
+    <string name="main_perm_skip">رد کردن</string>
+    <string name="main_perm_all_granted">همه مجوزها قبلاً داده شده‌اند</string>
+    <string name="main_perm_blocked">مجوز مسدود شده است. تنظیمات برنامه را باز کنید.</string>
+    <string name="main_perm_rationale">برای بررسی دقیق‌تر، برنامه به دسترسی به مکان دقیق نیاز دارد.\n\nاز این دسترسی برای خواندن شناسه دکل‌های مخابراتی و انجام geolocation lookup از طریق BeaconDB استفاده می‌شود.\n\n%s\n\nبدون این مجوزها، بررسی همچنان اجرا می‌شود، اما بخشی از نشانه‌های مکان و اسکن Wi-Fi در دسترس نخواهد بود.</string>
+    <string name="main_perm_rationale_wifi_13">در Android 13+ برنامه همچنین برای یافتن نقاط دسترسی نزدیک، مجوز nearby Wi-Fi devices را درخواست می‌کند.</string>
+    <string name="main_perm_rationale_wifi">برنامه همچنین از اسکن Wi-Fi برای یافتن نقاط دسترسی نزدیک استفاده می‌کند.</string>
+
+    <string name="main_check_running">بررسی در حال انجام است. کارت‌ها هم‌زمان با رسیدن داده‌ها به‌روزرسانی می‌شوند.</string>
+    <string name="main_check_stopped">بررسی متوقف شد</string>
+    <string name="main_status_scanning">در حال اسکن...</string>
+    <string name="main_status_preparing">در حال آماده‌سازی...</string>
+    <string name="main_status_cancelled">لغو شد</string>
+    <string name="main_status_stopped">متوقف شد</string>
+
+    <string name="main_loading_status_scanning">اسکن</string>
+    <string name="main_loading_status_checking">در حال بررسی</string>
+
+    <string name="main_loading_geo_ip">در حال بررسی کشور، ASN و نشانه‌های میزبانی.</string>
+    <string name="main_loading_ip_comparison">در حال مقایسه IP عمومی از طریق چند سرویس مستقل.</string>
+    <string name="main_loading_direct">در حال جست‌وجوی نشانه‌های مستقیم VPN، proxy و کلاینت‌های نصب‌شده.</string>
+    <string name="main_loading_indirect">در حال بررسی اینترفیس‌ها، DNS، مسیرها و نشانه‌های فنی محلی.</string>
+    <string name="main_loading_location">در حال جمع‌آوری نشانه‌های اپراتور، دکل و Wi-Fiهای نزدیک.</string>
+    <string name="main_loading_bypass">در حال جست‌وجوی split tunnel bypass محلی و proxy endpointهای در دسترس.</string>
+
+    <string name="main_stopped_scan">اسکن پیش از تکمیل این مرحله متوقف شد.</string>
+    <string name="main_stopped_check">این مرحله پیش از تکمیل متوقف شد.</string>
+
+    <string name="main_card_status_detected">شناسایی شد</string>
+    <string name="main_card_status_error">خطا</string>
+    <string name="main_card_status_needs_review">نیازمند بررسی</string>
+    <string name="main_card_status_clean">پاک</string>
+
+    <string name="main_verdict_not_detected">دور زدن شناسایی نشد</string>
+    <string name="main_verdict_needs_review">نیازمند بررسی بیشتر</string>
+    <string name="main_verdict_detected">دور زدن شناسایی شد</string>
+
+    <string name="main_verdict_section_meaning">معنای این نتیجه</string>
+    <string name="main_verdict_section_discovered">چه چیزی کشف شد</string>
+    <string name="main_verdict_section_reasons">چرا این نتیجه صادر شد</string>
+
+    <string name="main_verdict_hide_details">پنهان کردن جزئیات</string>
+
+    <string name="main_ipv6_error_ignored">خطای IPv6 نادیده گرفته شد: </string>
+
+    <string name="settings_port_range_preview">پورت‌های proxy لوکال‌هاست برای اسکن: %1$s (%2$s %3$s)</string>
+    <plurals name="settings_port_word">
+        <item quantity="one">پورت</item>
+        <item quantity="other">پورت</item>
+    </plurals>
+
+    <string name="narrative_exposure_remote_endpoint">نقطه پایانی راه‌دور کشف شد</string>
+    <string name="narrative_exposure_public_ip">فقط IP عمومی کشف شد</string>
+    <string name="narrative_exposure_local_proxy">فقط proxy/API محلی پیدا شد</string>
+    <string name="narrative_exposure_technical_signal">فقط نشانه‌های فنی شبکه پیدا شد</string>
+    <string name="narrative_exposure_insufficient">هیچ داده‌ای از سرور جمع‌آوری نشد</string>
+
+    <string name="narrative_explanation_detected">بررسی خودکار دور زدن را تأییدشده می‌داند.</string>
+    <string name="narrative_explanation_needs_review">بررسی خودکار برای یک نتیجه‌گیری قطعی کافی نیست.</string>
+    <string name="narrative_explanation_not_detected">این بررسی نشانه‌های قانع‌کننده‌ای از دور زدن پیدا نکرد.</string>
+
+    <string name="narrative_explanation_exposure_remote">Xray API محلی آدرس نقطه پایانی راه‌دور را آشکار کرد.</string>
+    <string name="narrative_explanation_exposure_public_ip">فقط IP خروجی عمومی دیده شد، نه آدرس سرور نهایی.</string>
+    <string name="narrative_explanation_exposure_local_proxy">فقط یک proxy/API محلی روی دستگاه دیده شد، بدون آدرس نقطه پایانی راه‌دور.</string>
+    <string name="narrative_explanation_exposure_technical">فقط نشانه‌های فنی شبکه و مسیریابی موجود بود، بدون آدرس سرور.</string>
+    <string name="narrative_explanation_exposure_insufficient">نه آدرس سرور و نه IP عمومی به دست نیامد.</string>
+
+    <string name="narrative_meaning_detected">نتیجه قرمز یعنی بررسی خودکار نشانه‌های کافی از دور زدن را جمع کرده است.</string>
+    <string name="narrative_meaning_needs_review">نتیجه زرد یعنی نشانه‌هایی وجود دارد، اما نیاز به بررسی دستی دارد.</string>
+    <string name="narrative_meaning_not_detected">نتیجه سبز یعنی هیچ نشانه تعیین‌کننده‌ای از دور زدن پیدا نشد.</string>
+    <string name="narrative_meaning_exposure_remote">آدرس واقعی نقطه پایانی راه‌دور به دست آمد، نه فقط IP عمومی.</string>
+    <string name="narrative_meaning_exposure_public_ip">IP عمومی و آدرس سرور نهایی یکی نیستند: سرویس‌های اینترنتی فقط IP خروجی را می‌بینند که ممکن است صرفاً یک نقطه خروج باشد.</string>
+    <string name="narrative_meaning_exposure_local_proxy">proxy/API محلی نشان می‌دهد روی دستگاه یک مکانیزم دور زدن وجود دارد، اما به‌تنهایی سرور راه‌دور را آشکار نمی‌کند.</string>
+    <string name="narrative_meaning_exposure_technical">نشانه‌های فنی رفتار شبکه را تأیید می‌کنند، اما آدرس نقطه پایانی راه‌دور را آشکار نمی‌کنند.</string>
+    <string name="narrative_meaning_exposure_insufficient">با داده‌های فعلی نمی‌توان گفت آیا برنامه آدرس سرور دور زدن را یاد گرفته است یا نه.</string>
+
+    <string name="narrative_label_exposure_level">سطح افشا</string>
+    <string name="narrative_label_xray_api">Xray API محلی</string>
+    <string name="narrative_label_remote_endpoint">نقطه پایانی راه‌دور</string>
+    <string name="narrative_label_remote_endpoint_extra">نقطه پایانی راه‌دور اضافی</string>
+    <string name="narrative_label_local_proxy">proxy محلی</string>
+    <string name="narrative_label_vpn_network_ip">IP از طریق VPN Network</string>
+    <string name="narrative_label_real_ip">IP خارج از VPN</string>
+    <string name="narrative_label_direct_ip">IP عمومی مستقیم</string>
+    <string name="narrative_label_proxy_ip">IP عمومی از طریق proxy</string>
+    <string name="narrative_label_checkers_ip">IP از checkerهای خارجی</string>
+    <string name="narrative_label_ru_checkers_ip">IP از checkerهای RU</string>
+    <string name="narrative_label_non_ru_checkers_ip">IP از checkerهای غیر RU</string>
+    <string name="narrative_label_geo_ip">IP از GeoIP</string>
+
+    <string name="narrative_reason_xray_api">یک Xray API محلی روی دستگاه پیدا شد و آدرس‌های outbound را آشکار می‌کند.</string>
+    <string name="narrative_reason_split_tunnel">IP مستقیم و IP از طریق proxy محلی با هم متفاوت‌اند.</string>
+    <string name="narrative_reason_vpn_gateway_leak">در زمان فعال بودن VPN، برنامه توانست به شبکه غیر VPN دسترسی پیدا کند.</string>
+    <string name="narrative_reason_vpn_network_binding">برنامه توانست شیء VPN Network را جدا از شبکه عادی استفاده کند.</string>
+    <string name="narrative_reason_bypass_unconfirmed">یک proxy محلی پیدا شد، اما دور زدن به‌صورت خودکار تأیید نشد.</string>
+    <string name="narrative_reason_ip_comparison_detected">checkerهای RU و غیر RU، IP عمومی متفاوتی برگرداندند.</string>
+    <string name="narrative_reason_ip_comparison_review">checkerهای خارجی IP پاسخ ناقص یا متناقض دادند.</string>
+    <string name="narrative_reason_geo_location_conflict">نشانه‌های مکان به روسیه اشاره می‌کنند، اما GeoIP به یک آدرس خارجی اشاره می‌کند.</string>
+    <string name="narrative_reason_geo_foreign">GeoIP یک آدرس خارجی یا مشکوک را نشان می‌دهد.</string>
+    <string name="narrative_reason_direct_signs">نشانه‌های مستقیم از proxy/VPN محلی پیدا شد.</string>
+    <string name="narrative_reason_indirect_signs">نشانه‌های غیرمستقیم از تونل، تغییر مسیر یا جایگزینی DNS پیدا شد.</string>
+    <string name="narrative_reason_fallback_detected">این نتیجه بر پایه ترکیب چند نشانه از بررسی‌ها صادر شده است.</string>
+    <string name="narrative_reason_fallback_review">نشانه‌ها ناقص یا متناقض‌اند، بنابراین بررسی دستی لازم است.</string>
+    <string name="narrative_reason_fallback_clean">هیچ نشانه تعیین‌کننده‌ای از دور زدن پیدا نشد.</string>
+
+    <string name="checker_yes">بله</string>
+    <string name="checker_no">خیر</string>
+
+    <string name="checker_geo_error_no_provider">هیچ ارائه‌دهنده GeoIP داده‌ای برنگرداند</string>
+    <string name="checker_geo_error_fetch">دریافت داده‌های GeoIP ممکن نشد: %1$s</string>
+    <string name="checker_geo_info_ip">IP: %1$s</string>
+    <string name="checker_geo_info_country">کشور: %1$s (%2$s)</string>
+    <string name="checker_geo_info_isp">ISP: %1$s</string>
+    <string name="checker_geo_info_org">سازمان: %1$s</string>
+    <string name="checker_geo_info_asn">ASN: %1$s</string>
+    <string name="checker_geo_foreign_ip_yes">IP خارج از روسیه: بله (%1$s)</string>
+    <string name="checker_geo_foreign_ip_no">IP خارج از روسیه: خیر</string>
+    <string name="checker_geo_hosting_prefix">IP متعلق به یک ارائه‌دهنده هاستینگ است: %1$s</string>
+    <string name="checker_geo_proxy_db">IP در پایگاه‌های داده شناخته‌شده proxy/VPN فهرست شده است: %1$s</string>
+
+    <string name="checker_ip_comp_ru_checkers">checkerهای RU</string>
+    <string name="checker_ip_comp_non_ru_checkers">checkerهای غیر RU</string>
+    <string name="checker_ip_comp_summary_detected">checkerهای RU و غیر RU، IPهای متفاوتی برگرداندند: %1$s و %2$s</string>
+    <string name="checker_ip_comp_summary_family_mismatch">checkerهای RU و غیر RU آدرس‌هایی از خانواده‌های متفاوت برگرداندند: %1$s و %2$s</string>
+    <string name="checker_ip_comp_summary_raw_mismatch">IPها متفاوت‌اند، اما داده‌ها ناقص است: %1$s و %2$s</string>
+    <string name="checker_ip_comp_summary_ipv4_only">همه checkerهای IPv4 که پاسخ دادند، یک IP یکسان برگرداندند: %1$s</string>
+    <string name="checker_ip_comp_summary_all_same">همه checkerها یک IP یکسان برگرداندند: %1$s</string>
+    <string name="checker_ip_comp_summary_no_response">هیچ IP checker پاسخی برنگرداند</string>
+    <string name="checker_ip_comp_summary_incomplete">مقایسه ناقص است: بعضی checkerها پاسخ ندادند</string>
+    <string name="checker_ip_comp_status_has_response">پاسخ دارد</string>
+    <string name="checker_ip_comp_status_no_response">بدون پاسخ</string>
+    <string name="checker_ip_comp_status_ipv6_ignored">IPv6 نادیده گرفته شد</string>
+    <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
+    <string name="checker_ip_comp_status_mismatch">ناسازگار</string>
+    <string name="checker_ip_comp_status_partial">ناقص</string>
+    <string name="checker_ip_comp_status_match">یکسان</string>
+    <string name="checker_ip_comp_single_ip">IP: %1$s</string>
+    <string name="checker_ip_comp_single_error">خطا: %1$s</string>
+    <string name="checker_ip_comp_single_no_answer">سرویس پاسخ نداد</string>
+    <string name="checker_ip_comp_no_ip_returned">هیچ سرویسی IP برنگرداند</string>
+    <string name="checker_ip_comp_ipv6_ignored_no_ipv4">خطاهای IPv6 نادیده گرفته شدند، اما پاسخ معتبر IPv4 وجود ندارد</string>
+    <string name="checker_ip_comp_mixed_families">سرویس‌ها آدرس‌هایی از خانواده‌های متفاوت برگرداندند: %1$s</string>
+    <string name="checker_ip_comp_different_ips">سرویس‌ها IPهای متفاوتی برگرداندند: %1$s</string>
+    <string name="checker_ip_comp_partial">IP برابر %1$s است، اما %2$d از %3$d سرویس پاسخ ندادند</string>
+    <string name="checker_ip_comp_all_same">همه سرویس‌های پاسخ‌داده در این گروه IP %1$s را برگرداندند</string>
+    <string name="checker_ip_comp_ipv6_ignored_suffix">؛ خطاهای IPv6 نادیده گرفته شد: %1$d</string>
+
+    <string name="checker_direct_category_name">نشانه‌های مستقیم</string>
+    <string name="checker_direct_no_active_network">هیچ شبکه فعالی پیدا نشد</string>
+    <string name="checker_direct_caps_unavailable">NetworkCapabilities در دسترس نیست</string>
+    <string name="checker_direct_transport_vpn">TRANSPORT_VPN: %1$s</string>
+    <string name="checker_direct_detected">شناسایی شد</string>
+    <string name="checker_direct_not_detected">شناسایی نشد</string>
+    <string name="checker_direct_flag_is_vpn">پرچم IS_VPN در capabilities پیدا شد</string>
+    <string name="checker_direct_vpn_transport_info">VpnTransportInfo در transport info پیدا شد</string>
+    <string name="checker_direct_http_proxy">HTTP proxy</string>
+    <string name="checker_direct_socks_proxy">SOCKS proxy</string>
+    <string name="checker_direct_proxy_not_configured">%1$s: پیکربندی نشده</string>
+    <string name="checker_direct_proxy_endpoint">%1$s: %2$s:%3$s</string>
+    <string name="checker_direct_proxy_known_port">%1$s از پورت شناخته‌شده %2$s استفاده می‌کند</string>
+    <string name="checker_direct_proxy_no_valid_port">%1$s: میزبان بدون پورت معتبر پیدا شد</string>
+
+    <string name="checker_indirect_category_name">نشانه‌های غیرمستقیم</string>
+    <string name="checker_indirect_capability_not_vpn">Capability NOT_VPN: %1$s</string>
+    <string name="checker_indirect_present">وجود دارد</string>
+    <string name="checker_indirect_absent_suspicious">وجود ندارد (مشکوک)</string>
+    <string name="checker_indirect_no_vpn_interfaces">اینترفیس‌های VPN (tun/tap/wg/ppp/ipsec): موردی پیدا نشد</string>
+    <string name="checker_indirect_vpn_interface_found">اینترفیس VPN پیدا شد: %1$s</string>
+    <string name="checker_indirect_interface_error">خطا هنگام بررسی اینترفیس‌ها: %1$s</string>
+    <string name="checker_indirect_mtu_anomaly">ناهنجاری MTU: %1$s MTU=%2$d (&lt; 1500)</string>
+    <string name="checker_indirect_mtu_anomaly_nonstandard">ناهنجاری MTU: اینترفیس غیر استاندارد %1$s MTU=%2$d</string>
+    <string name="checker_indirect_mtu_no_anomalies">MTU: ناهنجاری‌ای پیدا نشد</string>
+    <string name="checker_indirect_mtu_error">خطا هنگام بررسی MTU: %1$s</string>
+    <string name="checker_indirect_default_route_standard">مسیر پیش‌فرض: %1$s (استاندارد)</string>
+    <string name="checker_indirect_default_route_nonstandard">مسیر پیش‌فرض از طریق اینترفیس غیر استاندارد: %1$s</string>
+    <string name="checker_indirect_dedicated_routes">مسیرهای اختصاصی از طریق VPN/اینترفیس غیر استاندارد: %1$s</string>
+    <string name="checker_indirect_proc_default_route_standard">مسیر پیش‌فرض (/proc/net/route): %1$s (استاندارد)</string>
+    <string name="checker_indirect_proc_default_route_nonstandard">مسیر پیش‌فرض (/proc/net/route) از طریق اینترفیس غیر استاندارد: %1$s</string>
+    <string name="checker_indirect_split_tunnel_routes">مسیریابی نشان‌دهنده split tunneling است: هم‌زمان مسیرهای direct و tunnel دیده می‌شوند</string>
+    <string name="checker_indirect_gateway_route_unavailable">مسیر gateway: ارزیابی از طریق Android API ممکن نشد</string>
+    <string name="checker_indirect_routing_no_anomalies">مسیریابی: ناهنجاری‌ای پیدا نشد</string>
+    <string name="checker_indirect_dns_no_active_network">DNS: هیچ شبکه فعالی پیدا نشد</string>
+    <string name="checker_indirect_dns_servers_not_found">سرورهای DNS: موردی پیدا نشد</string>
+    <string name="checker_indirect_dns_localhost">DNS به localhost اشاره می‌کند: %1$s (برای VPN/proxy محلی رایج است)</string>
+    <string name="checker_indirect_dns_inherited_private">DNS: %1$s (از همان زیرشبکه خصوصی شبکه اصلی به ارث رسیده است)</string>
+    <string name="checker_indirect_dns_private">DNS در زیرشبکه خصوصی: %1$s</string>
+    <string name="checker_indirect_dns_private_changed">DNS در زیرشبکه خصوصی: %1$s (با شبکه underlying تفاوت دارد)</string>
+    <string name="checker_indirect_dns_replaced_vpn">DNS هنگام فعال بودن VPN جایگزین شده است: %1$s</string>
+    <string name="checker_indirect_dns_source_unknown">DNS: %1$s (منبع با شبکه underlying قابل تطبیق نیست)</string>
+    <string name="checker_indirect_dns_plain">DNS: %1$s</string>
+    <string name="checker_indirect_dns_link_local">DNS: %1$s (link-local)</string>
+    <string name="checker_indirect_proxy_tool_installed">ابزار proxy نصب شده است: %1$s (%2$s)</string>
+    <string name="checker_indirect_local_listener">listener محلی روی پورت proxy: %1$s:%2$d/%3$s</string>
+    <string name="checker_indirect_many_localhost_listeners">چند localhost listener روی پورت‌های بالا پیدا شد: %1$d</string>
+    <string name="checker_indirect_no_proxy_technical">نشانه‌های فنی اضافی proxy: موردی پیدا نشد</string>
+    <string name="checker_indirect_limited_checks">بررسی processها، iptables/pf و گواهی‌های سیستمی بدون root/privileged access محدود است</string>
+    <string name="checker_indirect_dumpsys_vpn_unavailable">dumpsys vpn_management: در دسترس نیست</string>
+    <string name="checker_indirect_dumpsys_vpn_none">dumpsys vpn_management: هیچ VPN فعالی وجود ندارد</string>
+    <string name="checker_indirect_dumpsys_vpn_line">VPN management: %1$s</string>
+    <string name="checker_indirect_dumpsys_vpn_error">dumpsys vpn_management: %1$s</string>
+    <string name="checker_indirect_dumpsys_service_unavailable">dumpsys activity services VpnService: در دسترس نیست</string>
+    <string name="checker_indirect_dumpsys_service_none">نمونه‌های فعال VpnService: موردی پیدا نشد</string>
+    <string name="checker_indirect_dumpsys_service_active">VpnService فعال است: %1$s</string>
+    <string name="checker_indirect_dumpsys_service_error">dumpsys activity services: %1$s</string>
+
+    <string name="checker_bypass_progress_port_scan_phase">اسکن پورت</string>
+    <string name="checker_bypass_progress_port_scan_detail">در حال جست‌وجوی proxyهای باز روی localhost...</string>
+    <string name="checker_bypass_progress_popular_ports">پورت‌های رایج</string>
+    <string name="checker_bypass_progress_full_scan">اسکن کامل</string>
+    <string name="checker_bypass_progress_port_detail">پورت %1$d (%2$d%%)</string>
+    <string name="checker_bypass_progress_xray_detail">در حال جست‌وجوی gRPC API روی localhost...</string>
+    <string name="checker_bypass_progress_underlying_detail">در حال بررسی دسترسی به شبکه غیر VPN...</string>
+    <string name="checker_bypass_progress_ip_phase">بررسی IP</string>
+    <string name="checker_bypass_progress_ip_detail">در حال به‌دست‌آوردن IP مستقیم و IP از طریق proxy...</string>
+    <string name="checker_bypass_progress_mtproto_detail">در حال بررسی Telegram DC از طریق proxy...</string>
+    <string name="checker_bypass_ip_unavailable">در دسترس نیست</string>
+    <string name="checker_bypass_direct_ip">IP مستقیم: %1$s</string>
+    <string name="checker_bypass_proxy_ip">IP از طریق proxy: %1$s</string>
+    <string name="checker_bypass_split_confirmed">Per-app split bypass: تأیید شد (IPها متفاوت‌اند)</string>
+    <string name="checker_bypass_split_disabled">Per-app split غیرفعال است: IPها یکسان‌اند</string>
+    <string name="checker_bypass_mtproto_reachable">MTProto proxy: Telegram DC از طریق %1$s -&gt; %2$s در دسترس است</string>
+    <string name="checker_bypass_mtproto_unreachable">MTProto probe: Telegram DC از طریق proxy در دسترس نیست</string>
+    <string name="checker_bypass_no_open_proxy">proxy باز روی localhost: موردی پیدا نشد</string>
+    <string name="checker_bypass_open_proxy">proxy باز %1$s: %2$s</string>
+    <string name="checker_bypass_open_proxy_review_suffix"> (نیازمند تأیید دور زدن)</string>
+    <string name="checker_bypass_no_xray">Xray gRPC API: پیدا نشد</string>
+    <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
+    <string name="checker_bypass_extra_outbounds">&#160;&#160;...%1$d outbound دیگر</string>
+    <string name="checker_bypass_vpn_not_active">Underlying network: VPN فعال نیست، این بررسی لازم نیست</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding: برنامه هنگام غیر VPN بودن شبکه پیش‌فرض، از طریق bind صریح به VPN Network، IP %1$s را دریافت کرد</string>
+    <string name="checker_bypass_vpn_bound_ip">IP از طریق bind صریح به VPN Network: %1$s</string>
+    <string name="checker_bypass_tun_probe_success">TUN active probe: درخواست از طریق VPN Network، IP %1$s را برگرداند (TUN یک اینترفیس زنده و قابل مسیریابی است)</string>
+    <string name="checker_bypass_tun_probe_failure">TUN active probe: درخواست از طریق VPN Network در دسترس نیست (اینترفیس مسدود یا filtered است)</string>
+    <string name="checker_bypass_default_non_vpn_ip">IP پیش‌فرض غیر VPN: %1$s</string>
+    <string name="checker_bypass_underlying_unreachable">Underlying network: شبکه غیر VPN در دسترس نیست (full tunnel)</string>
+    <string name="checker_bypass_gateway_leak">VPN gateway leak: برنامه می‌تواند از تونل VPN عبور کند (IP VPN: %1$s، IP واقعی: %2$s)</string>
+    <string name="checker_bypass_underlying_same_ip">شبکه underlying در دسترس است، اما IP با VPN%1$s یکسان است: split tunnel تأیید نشد</string>
+
+    <string name="checker_vpn_known_apps_none">برنامه‌های شناخته‌شده VPN/Proxy و ارائه‌دهندگان VpnService: موردی پیدا نشد</string>
+    <string name="checker_vpn_installed_app">برنامه نصب‌شده: %1$s (%2$s)</string>
+    <string name="checker_vpn_declares_service">برنامه VpnService را اعلان می‌کند: %1$s (%2$s)</string>
+</resources>

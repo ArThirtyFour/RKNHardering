@@ -2,6 +2,7 @@ package com.notcvnt.rknhardering
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
@@ -46,9 +47,19 @@ class VerdictNarrativeTest {
         )
 
         assertEquals(ExposureStatus.PUBLIC_IP_ONLY, narrative.exposureStatus)
-        assertTrue(narrative.explanation.contains("внешний IP"))
-        assertTrue(narrative.discoveredRows.any { it.label == "Публичный IP напрямую" && it.value == "91.198.174.192" })
-        assertTrue(narrative.discoveredRows.any { it.label == "Публичный IP через proxy" && it.value == "185.220.1.10" })
+        assertTrue(narrative.explanation.contains("public"))
+        assertTrue(
+            narrative.discoveredRows.any {
+                it.label == context.getString(R.string.narrative_label_direct_ip) &&
+                    it.value == "91.198.174.192"
+            },
+        )
+        assertTrue(
+            narrative.discoveredRows.any {
+                it.label == context.getString(R.string.narrative_label_proxy_ip) &&
+                    it.value == "185.220.1.10"
+            },
+        )
     }
 
     @Test
@@ -83,7 +94,8 @@ class VerdictNarrativeTest {
         assertTrue(narrative.explanation.contains("Xray API"))
         assertTrue(
             narrative.discoveredRows.any {
-                it.label == "Адрес удалённого узла" && it.value == "203.0.113.5:443"
+                it.label == context.getString(R.string.narrative_label_remote_endpoint) &&
+                    it.value == "203.0.113.5:443"
             },
         )
     }
@@ -97,7 +109,10 @@ class VerdictNarrativeTest {
                 bypass = bypass(
                     findings = listOf(
                         Finding(
-                            description = "TUN активный зонд: запрос через VPN Network вернул IP 185.220.1.10",
+                            description = context.getString(
+                                R.string.checker_bypass_tun_probe_success,
+                                "185.220.1.10",
+                            ),
                             isInformational = true,
                             source = EvidenceSource.TUN_ACTIVE_PROBE,
                         ),
@@ -107,7 +122,11 @@ class VerdictNarrativeTest {
         )
 
         assertEquals(ExposureStatus.PUBLIC_IP_ONLY, narrative.exposureStatus)
-        assertTrue(narrative.discoveredRows.any { it.label == "IP через VPN Network" })
+        assertTrue(
+            narrative.discoveredRows.any {
+                it.label == context.getString(R.string.narrative_label_vpn_network_ip)
+            },
+        )
     }
 
     @Test
@@ -124,8 +143,13 @@ class VerdictNarrativeTest {
         )
 
         assertEquals(ExposureStatus.LOCAL_PROXY_OR_API_ONLY, narrative.exposureStatus)
-        assertTrue(narrative.explanation.contains("локальный proxy/API"))
-        assertTrue(narrative.discoveredRows.any { it.label == "Локальный proxy" && it.value.contains("127.0.0.1:1080") })
+        assertTrue(narrative.explanation.contains("local proxy/API"))
+        assertTrue(
+            narrative.discoveredRows.any {
+                it.label == context.getString(R.string.narrative_label_local_proxy) &&
+                    it.value.contains("127.0.0.1:1080")
+            },
+        )
     }
 
     @Test
@@ -143,8 +167,12 @@ class VerdictNarrativeTest {
             privacyMode = true,
         )
 
-        val directRow = narrative.discoveredRows.first { it.label == "Публичный IP напрямую" }
-        val proxyRow = narrative.discoveredRows.first { it.label == "Публичный IP через proxy" }
+        val directRow = narrative.discoveredRows.first {
+            it.label == context.getString(R.string.narrative_label_direct_ip)
+        }
+        val proxyRow = narrative.discoveredRows.first {
+            it.label == context.getString(R.string.narrative_label_proxy_ip)
+        }
 
         assertEquals("91.198.*.*", directRow.value)
         assertEquals("185.220.*.*", proxyRow.value)
@@ -156,7 +184,7 @@ class VerdictNarrativeTest {
         val narrative = VerdictNarrativeBuilder.build(context = context, result = result())
 
         assertEquals(ExposureStatus.INSUFFICIENT_DATA, narrative.exposureStatus)
-        assertTrue(narrative.explanation.contains("не нашла убедительных признаков"))
+        assertTrue(narrative.explanation.contains("did not find convincing signs"))
     }
 
     private fun result(
@@ -236,6 +264,8 @@ class VerdictNarrativeTest {
         proxyEndpoint: ProxyEndpoint? = null,
         directIp: String? = null,
         proxyIp: String? = null,
+        vpnNetworkIp: String? = null,
+        underlyingIp: String? = null,
         xrayApiScanResult: XrayApiScanResult? = null,
         findings: List<Finding> = emptyList(),
         detected: Boolean = false,
@@ -245,6 +275,8 @@ class VerdictNarrativeTest {
         proxyEndpoint = proxyEndpoint,
         directIp = directIp,
         proxyIp = proxyIp,
+        vpnNetworkIp = vpnNetworkIp,
+        underlyingIp = underlyingIp,
         xrayApiScanResult = xrayApiScanResult,
         findings = findings,
         detected = detected || evidence.any { it.detected },

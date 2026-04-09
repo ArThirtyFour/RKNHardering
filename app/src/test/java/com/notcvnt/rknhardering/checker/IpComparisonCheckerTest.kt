@@ -1,17 +1,26 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpCheckerScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class IpComparisonCheckerTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `all checkers returning same ip produces clean result`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex", IpCheckerScope.RU, ip = "1.2.3.4"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "1.2.3.4"),
@@ -21,13 +30,14 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertFalse(result.needsReview)
-        assertEquals("Есть ответ", result.ruGroup.statusLabel)
-        assertEquals("Совпадает", result.nonRuGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_has_response), result.ruGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_match), result.nonRuGroup.statusLabel)
     }
 
     @Test
     fun `ru and non-ru mismatch with full data is detected`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex", IpCheckerScope.RU, ip = "10.0.0.1"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "20.0.0.1"),
@@ -44,6 +54,7 @@ class IpComparisonCheckerTest {
     @Test
     fun `non-ru mismatch inside group requires attention`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex", IpCheckerScope.RU, ip = "1.2.3.4"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "5.6.7.8"),
@@ -54,12 +65,13 @@ class IpComparisonCheckerTest {
         assertFalse(result.detected)
         assertTrue(result.needsReview)
         assertTrue(result.nonRuGroup.detected)
-        assertEquals("Разнобой", result.nonRuGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_mismatch), result.nonRuGroup.statusLabel)
     }
 
     @Test
     fun `partial non-ru response stays in review even when ip differs`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex", IpCheckerScope.RU, ip = "1.2.3.4"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "5.6.7.8"),
@@ -69,12 +81,13 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertTrue(result.needsReview)
-        assertEquals("Частично", result.nonRuGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_partial), result.nonRuGroup.statusLabel)
     }
 
     @Test
     fun `mixed ipv4 and ipv6 responses require review instead of detection`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex", IpCheckerScope.RU, ip = "37.113.42.220"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "37.113.42.220"),
@@ -84,12 +97,13 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertTrue(result.needsReview)
-        assertEquals("IPv4/IPv6", result.nonRuGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_ipv4_ipv6), result.nonRuGroup.statusLabel)
     }
 
     @Test
     fun `ignored ipv6 error does not make ru group partial`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex IPv4", IpCheckerScope.RU, ip = "37.113.42.220"),
                 response(
@@ -106,13 +120,14 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertFalse(result.needsReview)
-        assertEquals("Совпадает", result.ruGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_match), result.ruGroup.statusLabel)
         assertEquals(1, result.ruGroup.ignoredIpv6ErrorCount)
     }
 
     @Test
     fun `ignored ipv6 error does not make non ru group partial`() {
         val result = IpComparisonChecker.evaluate(
+            context,
             listOf(
                 response("Yandex IPv4", IpCheckerScope.RU, ip = "37.113.42.220"),
                 response("2ip.ru", IpCheckerScope.RU, ip = "37.113.42.220"),
@@ -131,7 +146,7 @@ class IpComparisonCheckerTest {
 
         assertFalse(result.detected)
         assertFalse(result.needsReview)
-        assertEquals("Совпадает", result.nonRuGroup.statusLabel)
+        assertEquals(context.getString(R.string.checker_ip_comp_status_match), result.nonRuGroup.statusLabel)
         assertEquals(1, result.nonRuGroup.ignoredIpv6ErrorCount)
     }
 

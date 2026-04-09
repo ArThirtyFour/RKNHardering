@@ -1,5 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpCheckerScope
@@ -75,6 +77,7 @@ object IpComparisonChecker {
     )
 
     suspend fun check(
+        context: Context,
         timeoutMs: Int = 7000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     ): IpComparisonResult = withContext(Dispatchers.IO) {
@@ -100,17 +103,19 @@ object IpComparisonChecker {
                     )
                 }
             }.map { it.await() }
-            evaluate(responses)
+            evaluate(context, responses)
         }
     }
 
-    internal fun evaluate(responses: List<IpCheckerResponse>): IpComparisonResult {
+    internal fun evaluate(context: Context, responses: List<IpCheckerResponse>): IpComparisonResult {
         val ruGroup = buildGroup(
-            title = "RU-чекеры",
+            context = context,
+            title = context.getString(R.string.checker_ip_comp_ru_checkers),
             responses = responses.filter { it.scope == IpCheckerScope.RU },
         )
         val nonRuGroup = buildGroup(
-            title = "Не-RU чекеры",
+            context = context,
+            title = context.getString(R.string.checker_ip_comp_non_ru_checkers),
             responses = responses.filter { it.scope == IpCheckerScope.NON_RU },
         )
 
@@ -141,16 +146,16 @@ object IpComparisonChecker {
             )
 
         val summary = when {
-            detected -> "RU и не-RU чекеры вернули разные IP: ${ruGroup.canonicalIp} и ${nonRuGroup.canonicalIp}"
-            familyMismatch -> "RU и не-RU чекеры вернули адреса разных семейств: ${ruGroup.canonicalIp} и ${nonRuGroup.canonicalIp}"
-            rawMismatch -> "IP различаются, но данные неполные: ${ruGroup.canonicalIp} и ${nonRuGroup.canonicalIp}"
+            detected -> context.getString(R.string.checker_ip_comp_summary_detected, ruGroup.canonicalIp, nonRuGroup.canonicalIp)
+            familyMismatch -> context.getString(R.string.checker_ip_comp_summary_family_mismatch, ruGroup.canonicalIp, nonRuGroup.canonicalIp)
+            rawMismatch -> context.getString(R.string.checker_ip_comp_summary_raw_mismatch, ruGroup.canonicalIp, nonRuGroup.canonicalIp)
             ruGroup.ignoredIpv6ErrorCount > 0 || nonRuGroup.ignoredIpv6ErrorCount > 0 ->
-                "Все ответившие IPv4-чекеры вернули один IP: ${ruGroup.canonicalIp ?: nonRuGroup.canonicalIp}"
+                context.getString(R.string.checker_ip_comp_summary_ipv4_only, ruGroup.canonicalIp ?: nonRuGroup.canonicalIp)
             ruGroup.canonicalIp != null && nonRuGroup.canonicalIp != null ->
-                "Все чекеры вернули один IP: ${ruGroup.canonicalIp}"
+                context.getString(R.string.checker_ip_comp_summary_all_same, ruGroup.canonicalIp)
             ruGroup.canonicalIp == null && nonRuGroup.canonicalIp == null ->
-                "Не удалось получить ответ ни от одного IP-чекера"
-            else -> "Сравнение неполное: часть чекеров не ответила"
+                context.getString(R.string.checker_ip_comp_summary_no_response)
+            else -> context.getString(R.string.checker_ip_comp_summary_incomplete)
         }
 
         return IpComparisonResult(
@@ -163,6 +168,7 @@ object IpComparisonChecker {
     }
 
     private fun buildGroup(
+        context: Context,
         title: String,
         responses: List<IpCheckerResponse>,
     ): IpCheckerGroupResult {
@@ -173,8 +179,8 @@ object IpComparisonChecker {
                     title = title,
                     detected = false,
                     needsReview = false,
-                    statusLabel = "Есть ответ",
-                    summary = "IP: ${response.ip}",
+                    statusLabel = context.getString(R.string.checker_ip_comp_status_has_response),
+                    summary = context.getString(R.string.checker_ip_comp_single_ip, response.ip),
                     canonicalIp = response.ip,
                     responses = responses,
                 )
@@ -183,8 +189,9 @@ object IpComparisonChecker {
                     title = title,
                     detected = false,
                     needsReview = true,
-                    statusLabel = "Нет ответа",
-                    summary = response.error?.let { "Ошибка: $it" } ?: "Сервис не ответил",
+                    statusLabel = context.getString(R.string.checker_ip_comp_status_no_response),
+                    summary = response.error?.let { context.getString(R.string.checker_ip_comp_single_error, it) }
+                        ?: context.getString(R.string.checker_ip_comp_single_no_answer),
                     responses = responses,
                 )
             }
@@ -201,16 +208,16 @@ object IpComparisonChecker {
                 title = title,
                 detected = false,
                 needsReview = true,
-                statusLabel = "Нет ответа",
-                summary = "Ни один сервис не вернул IP",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_no_response),
+                summary = context.getString(R.string.checker_ip_comp_no_ip_returned),
                 responses = responses,
             )
             uniqueIps.isEmpty() -> IpCheckerGroupResult(
                 title = title,
                 detected = false,
                 needsReview = false,
-                statusLabel = "IPv6 игнор",
-                summary = "IPv6-ошибки проигнорированы, валидного IPv4-ответа нет",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_ipv6_ignored),
+                summary = context.getString(R.string.checker_ip_comp_ipv6_ignored_no_ipv4),
                 responses = responses,
                 ignoredIpv6ErrorCount = ignoredIpv6ErrorCount,
             )
@@ -218,8 +225,8 @@ object IpComparisonChecker {
                 title = title,
                 detected = false,
                 needsReview = true,
-                statusLabel = "IPv4/IPv6",
-                summary = "Сервисы вернули адреса разных семейств: ${uniqueIps.joinToString()}",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_ipv4_ipv6),
+                summary = context.getString(R.string.checker_ip_comp_mixed_families, uniqueIps.joinToString()),
                 responses = responses,
                 ignoredIpv6ErrorCount = ignoredIpv6ErrorCount,
             )
@@ -227,8 +234,8 @@ object IpComparisonChecker {
                 title = title,
                 detected = true,
                 needsReview = false,
-                statusLabel = "Разнобой",
-                summary = "Сервисы вернули разные IP: ${uniqueIps.joinToString()}",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_mismatch),
+                summary = context.getString(R.string.checker_ip_comp_different_ips, uniqueIps.joinToString()),
                 responses = responses,
                 ignoredIpv6ErrorCount = ignoredIpv6ErrorCount,
             )
@@ -236,8 +243,8 @@ object IpComparisonChecker {
                 title = title,
                 detected = false,
                 needsReview = true,
-                statusLabel = "Частично",
-                summary = "IP ${uniqueIps.single()}, но ${failureCount} из ${responses.size} сервисов не ответили",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_partial),
+                summary = context.getString(R.string.checker_ip_comp_partial, uniqueIps.single(), failureCount, responses.size),
                 canonicalIp = uniqueIps.single(),
                 responses = responses,
                 ignoredIpv6ErrorCount = ignoredIpv6ErrorCount,
@@ -246,12 +253,11 @@ object IpComparisonChecker {
                 title = title,
                 detected = false,
                 needsReview = false,
-                statusLabel = "Совпадает",
+                statusLabel = context.getString(R.string.checker_ip_comp_status_match),
                 summary = buildString {
-                    append("Все ответившие сервисы группы вернули IP ${uniqueIps.single()}")
+                    append(context.getString(R.string.checker_ip_comp_all_same, uniqueIps.single()))
                     if (ignoredIpv6ErrorCount > 0) {
-                        append("; IPv6-ошибки проигнорированы: ")
-                        append(ignoredIpv6ErrorCount)
+                        append(context.getString(R.string.checker_ip_comp_ipv6_ignored_suffix, ignoredIpv6ErrorCount))
                     }
                 },
                 canonicalIp = uniqueIps.single(),
@@ -265,7 +271,7 @@ object IpComparisonChecker {
         val message = throwable.message?.trim().orEmpty()
         if (message.isNotBlank()) return message
         return when (throwable) {
-            is IOException -> "Сетевая ошибка"
+            is IOException -> "Network error"
             else -> throwable::class.java.simpleName
         }
     }

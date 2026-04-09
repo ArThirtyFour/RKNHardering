@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
@@ -50,6 +51,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var editResolverBootstrap: TextInputEditText
     private lateinit var switchPrivacyMode: MaterialSwitch
     private lateinit var chipGroupTheme: ChipGroup
+    private lateinit var chipGroupLanguage: ChipGroup
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +94,7 @@ class SettingsActivity : AppCompatActivity() {
         editResolverBootstrap = findViewById(R.id.editResolverBootstrap)
         switchPrivacyMode = findViewById(R.id.switchPrivacyMode)
         chipGroupTheme = findViewById(R.id.chipGroupTheme)
+        chipGroupLanguage = findViewById(R.id.chipGroupLanguage)
     }
 
     private fun loadSettings() {
@@ -125,6 +128,16 @@ class SettingsActivity : AppCompatActivity() {
             else -> R.id.chipThemeSystem
         }
         chipGroupTheme.check(themeChipId)
+
+        val language = prefs.getString(PREF_LANGUAGE, "").orEmpty()
+        val languageChipId = when (language) {
+            "en" -> R.id.chipLangEn
+            "ru" -> R.id.chipLangRu
+            "fa" -> R.id.chipLangFa
+            "zh-CN" -> R.id.chipLangZh
+            else -> R.id.chipLangSystem
+        }
+        chipGroupLanguage.check(languageChipId)
     }
 
     private fun setupListeners() {
@@ -220,6 +233,24 @@ class SettingsActivity : AppCompatActivity() {
             }
             prefs.edit().putString(PREF_THEME, value).apply()
             applyTheme(value)
+        }
+
+        chipGroupLanguage.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            val value = when (checkedIds.first()) {
+                R.id.chipLangEn -> "en"
+                R.id.chipLangRu -> "ru"
+                R.id.chipLangFa -> "fa"
+                R.id.chipLangZh -> "zh-CN"
+                else -> ""
+            }
+            prefs.edit().putString(PREF_LANGUAGE, value).apply()
+            val localeList = if (value.isEmpty()) {
+                LocaleListCompat.getEmptyLocaleList()
+            } else {
+                LocaleListCompat.forLanguageTags(value)
+            }
+            AppCompatDelegate.setApplicationLocales(localeList)
         }
 
         findViewById<MaterialCardView>(R.id.cardPermissions).setOnClickListener {
@@ -458,6 +489,7 @@ class SettingsActivity : AppCompatActivity() {
         const val PREF_DNS_RESOLVER_DOH_BOOTSTRAP = "pref_dns_resolver_doh_bootstrap"
         const val PREF_PRIVACY_MODE = "pref_privacy_mode"
         const val PREF_THEME = "pref_theme"
+        const val PREF_LANGUAGE = "pref_language"
         const val EXTRA_REQUEST_PERMISSIONS = "extra_request_permissions"
 
         fun applyTheme(theme: String) {

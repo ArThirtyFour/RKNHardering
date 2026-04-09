@@ -73,6 +73,19 @@ android {
     }
 }
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    val testHomeDir = layout.projectDirectory.dir(".test-home").asFile
+    val tempDir = testHomeDir.resolve("tmp")
+
+    doFirst {
+        testHomeDir.mkdirs()
+        tempDir.mkdirs()
+    }
+
+    systemProperty("user.home", testHomeDir.absolutePath)
+    systemProperty("java.io.tmpdir", tempDir.absolutePath)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

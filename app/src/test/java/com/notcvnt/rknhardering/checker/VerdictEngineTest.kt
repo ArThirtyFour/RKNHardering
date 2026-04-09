@@ -219,6 +219,8 @@ class VerdictEngineTest {
         proxyEndpoint = null,
         directIp = null,
         proxyIp = null,
+        vpnNetworkIp = null,
+        underlyingIp = null,
         xrayApiScanResult = null,
         findings = emptyList(),
         detected = evidence.any { it.detected },

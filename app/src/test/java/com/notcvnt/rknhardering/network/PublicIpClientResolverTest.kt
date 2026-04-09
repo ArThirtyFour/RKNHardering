@@ -78,7 +78,7 @@ class PublicIpClientResolverTest {
             )
 
             assertFalse(result.isSuccess)
-            assertEquals("HTTP 403 // Запрещено", result.exceptionOrNull()?.message)
+            assertEquals("HTTP 403 // Forbidden", result.exceptionOrNull()?.message)
         }
     }
 }
