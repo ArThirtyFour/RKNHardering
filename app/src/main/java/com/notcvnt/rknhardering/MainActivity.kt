@@ -11,10 +11,11 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -30,19 +31,23 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import com.notcvnt.rknhardering.checker.BypassChecker
+import com.notcvnt.rknhardering.checker.CheckUpdate
 import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.checker.VpnCheckRunner
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
-import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.network.DnsResolverConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 fun maskIp(ip: String): String {
     val ipv4Parts = ip.split(".")
@@ -58,12 +63,22 @@ fun maskIp(ip: String): String {
 
 class MainActivity : AppCompatActivity() {
 
+    private enum class RunningStage {
+        GEO_IP,
+        IP_COMPARISON,
+        DIRECT,
+        INDIRECT,
+        LOCATION,
+        BYPASS,
+    }
+
     private lateinit var btnRunCheck: MaterialButton
     private lateinit var btnStopCheck: MaterialButton
     private lateinit var cardRunCheckNotice: MaterialCardView
+    private lateinit var resultsScrollView: ScrollView
+    private lateinit var textCheckStatus: TextView
     private var checkJob: Job? = null
     private var hasDismissedRunCheckNotice = false
-    private lateinit var progressBar: ProgressBar
     private lateinit var cardGeoIp: MaterialCardView
     private lateinit var cardIpComparison: MaterialCardView
     private lateinit var cardDirect: MaterialCardView
@@ -103,6 +118,16 @@ class MainActivity : AppCompatActivity() {
         BypassChecker.ProgressLine.XRAY_API,
         BypassChecker.ProgressLine.UNDERLYING_NETWORK,
     )
+    private val loadingStages = linkedSetOf<RunningStage>()
+    private val completedStages = mutableSetOf<RunningStage>()
+    private var loadingStatusJob: Job? = null
+    private var loadingAnimationFrame = 0
+    private var hasUserScrolledManually = false
+    private var userTouchScrollInProgress = false
+    private var isAutoScrollInProgress = false
+    private var checkSessionCounter = 0
+    private var activeCheckSessionId = 0
+    private var activeCheckPrivacyMode = false
 
     private val prefs by lazy { getSharedPreferences("rknhardering_prefs", MODE_PRIVATE) }
 
@@ -159,10 +184,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
+        resultsScrollView = findViewById(R.id.resultsScrollView)
         btnRunCheck = findViewById(R.id.btnRunCheck)
         btnStopCheck = findViewById(R.id.btnStopCheck)
         cardRunCheckNotice = findViewById(R.id.cardRunCheckNotice)
-        progressBar = findViewById(R.id.progressBar)
+        textCheckStatus = findViewById(R.id.textCheckStatus)
         cardGeoIp = findViewById(R.id.cardGeoIp)
         cardIpComparison = findViewById(R.id.cardIpComparison)
         cardDirect = findViewById(R.id.cardDirect)
@@ -196,7 +222,25 @@ class MainActivity : AppCompatActivity() {
         geoIpDivider = findViewById(R.id.geoIpDivider)
         locationInfoSection = findViewById(R.id.locationInfoSection)
         locationDivider = findViewById(R.id.locationDivider)
+        setupResultsScrollTracking()
         updateCheckControls(isRunning = false)
+    }
+
+    private fun setupResultsScrollTracking() {
+        resultsScrollView.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> userTouchScrollInProgress = true
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL,
+                -> userTouchScrollInProgress = false
+            }
+            false
+        }
+        resultsScrollView.setOnScrollChangeListener { _, _, _, _, _ ->
+            if (userTouchScrollInProgress && !isAutoScrollInProgress) {
+                hasUserScrolledManually = true
+            }
+        }
     }
 
     private fun requiredPermissions(): Array<String> {
@@ -330,12 +374,22 @@ class MainActivity : AppCompatActivity() {
         btnRunCheck.iconTint = ColorStateList.valueOf(runButtonForeground)
 
         btnStopCheck.visibility = if (isRunning) View.VISIBLE else View.GONE
-        progressBar.visibility = if (isRunning) View.VISIBLE else View.GONE
+        if (isRunning) {
+            updateCheckStatus("Проверка идет. Карточки обновляются прямо по мере получения данных.")
+        } else if (textCheckStatus.text != CHECK_STATUS_STOPPED) {
+            updateCheckStatus(null)
+        }
+    }
+
+    private fun updateCheckStatus(message: String?) {
+        textCheckStatus.text = message.orEmpty()
+        textCheckStatus.visibility = if (message.isNullOrBlank()) View.GONE else View.VISIBLE
     }
 
     private fun runCheck() {
         val splitTunnelEnabled = prefs.getBoolean(SettingsActivity.PREF_SPLIT_TUNNEL_ENABLED, true)
         val networkRequestsEnabled = prefs.getBoolean(SettingsActivity.PREF_NETWORK_REQUESTS_ENABLED, true)
+        val privacyMode = prefs.getBoolean(SettingsActivity.PREF_PRIVACY_MODE, false)
         val portRange = prefs.getString(SettingsActivity.PREF_PORT_RANGE, "full") ?: "full"
         val portRangeStart = prefs.getInt(SettingsActivity.PREF_PORT_RANGE_START, 1024)
         val portRangeEnd = prefs.getInt(SettingsActivity.PREF_PORT_RANGE_END, 65535)
@@ -357,8 +411,7 @@ class MainActivity : AppCompatActivity() {
             portRangeEnd = portRangeEnd,
         )
 
-        updateCheckControls(isRunning = true)
-        hideCards()
+        val sessionId = prepareCheckSession(settings, privacyMode)
 
         if (splitTunnelEnabled) {
             cardBypass.visibility = View.VISIBLE
@@ -378,18 +431,29 @@ class MainActivity : AppCompatActivity() {
 
         checkJob = lifecycleScope.launch {
             try {
-                val result = VpnCheckRunner.run(this@MainActivity, settings) { progress ->
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        updateBypassProgress(progress)
+                showInitialLoadingCards(settings, sessionId)
+                VpnCheckRunner.run(this@MainActivity, settings) { update ->
+                    withContext(Dispatchers.Main) {
+                        if (sessionId != activeCheckSessionId) return@withContext
+                        handleCheckUpdate(update)
                     }
                 }
-                updateCheckControls(isRunning = false)
-                displayResult(result, settings)
+                if (sessionId == activeCheckSessionId) {
+                    stopLoadingStatusAnimation()
+                    updateCheckControls(isRunning = false)
+                    activeCheckSessionId = 0
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 updateCheckControls(isRunning = false)
                 resetBypassProgress()
                 statusBypass.text = "Отменено"
                 statusBypass.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.verdict_yellow))
+                if (sessionId == activeCheckSessionId) {
+                    stopLoadingStatusAnimation()
+                    updateCheckStatus(CHECK_STATUS_STOPPED)
+                    markLoadingStagesCancelled()
+                    activeCheckSessionId = 0
+                }
                 throw e
             } finally {
                 checkJob = null
@@ -397,30 +461,517 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hideCards() {
-        cardGeoIp.visibility = View.GONE
-        cardIpComparison.visibility = View.GONE
-        cardDirect.visibility = View.GONE
-        cardIndirect.visibility = View.GONE
-        cardLocation.visibility = View.GONE
-        cardBypass.visibility = View.GONE
-        cardVerdict.visibility = View.GONE
+    private fun prepareCheckSession(settings: CheckSettings, privacyMode: Boolean): Int {
+        checkSessionCounter += 1
+        activeCheckSessionId = checkSessionCounter
+        activeCheckPrivacyMode = privacyMode
+        hasUserScrolledManually = false
+        userTouchScrollInProgress = false
+        isAutoScrollInProgress = false
+        loadingStages.clear()
+        completedStages.clear()
+        stopLoadingStatusAnimation()
+        updateCheckControls(isRunning = true)
+        hideCards()
+        resetBypassProgress()
+        clearStageContent()
+        if (settings.splitTunnelEnabled) {
+            textBypassProgress.text = stageLoadingMessage(RunningStage.BYPASS)
+        }
+        return activeCheckSessionId
     }
 
-    private fun displayResult(result: CheckResult, settings: CheckSettings) {
-        val privacyMode = prefs.getBoolean(SettingsActivity.PREF_PRIVACY_MODE, false)
+    private fun clearStageContent() {
+        geoIpInfoSection.removeAllViews()
+        geoIpInfoSection.visibility = View.GONE
+        geoIpDivider.visibility = View.GONE
+        findingsGeoIp.removeAllViews()
 
+        textIpComparisonSummary.text = ""
+        ipComparisonGroups.removeAllViews()
+        ipComparisonGroups.visibility = View.GONE
+
+        findingsDirect.removeAllViews()
+        findingsIndirect.removeAllViews()
+
+        locationInfoSection.removeAllViews()
+        locationInfoSection.visibility = View.GONE
+        locationDivider.visibility = View.GONE
+        findingsLocation.removeAllViews()
+
+        findingsBypass.removeAllViews()
+        findingsBypass.visibility = View.GONE
+
+        textVerdict.text = ""
+    }
+
+    private fun showInitialLoadingCards(settings: CheckSettings, sessionId: Int) {
+        enabledStages(settings).forEachIndexed { index, stage ->
+            resultsScrollView.postDelayed(
+                {
+                    if (sessionId != activeCheckSessionId) return@postDelayed
+                    showLoadingCardForStage(stage)
+                },
+                index * INITIAL_CARD_STAGGER_MS,
+            )
+        }
+    }
+
+    private fun enabledStages(settings: CheckSettings): List<RunningStage> {
+        val stages = mutableListOf<RunningStage>()
         if (settings.networkRequestsEnabled) {
-            displayCategory(result.geoIp, cardGeoIp, iconGeoIp, statusGeoIp, findingsGeoIp, privacyMode)
-            displayIpComparison(result.ipComparison, privacyMode)
+            stages += RunningStage.GEO_IP
+            stages += RunningStage.IP_COMPARISON
         }
-        displayCategory(result.directSigns, cardDirect, iconDirect, statusDirect, findingsDirect, privacyMode)
-        displayCategory(result.indirectSigns, cardIndirect, iconIndirect, statusIndirect, findingsIndirect, privacyMode)
-        displayCategory(result.locationSignals, cardLocation, iconLocation, statusLocation, findingsLocation, privacyMode)
+        stages += RunningStage.DIRECT
+        stages += RunningStage.INDIRECT
+        stages += RunningStage.LOCATION
         if (settings.splitTunnelEnabled) {
-            displayBypass(result.bypassResult, privacyMode)
+            stages += RunningStage.BYPASS
         }
-        displayVerdict(result.verdict)
+        return stages
+    }
+
+    private fun handleCheckUpdate(update: CheckUpdate) {
+        when (update) {
+            is CheckUpdate.GeoIpReady -> {
+                markStageCompleted(RunningStage.GEO_IP)
+                ensureCardVisible(cardGeoIp, animate = false)
+                displayCategory(
+                    update.result,
+                    cardGeoIp,
+                    iconGeoIp,
+                    statusGeoIp,
+                    findingsGeoIp,
+                    activeCheckPrivacyMode,
+                )
+                animateContentReveal(findingsGeoIp, geoIpInfoSection, geoIpDivider)
+            }
+            is CheckUpdate.IpComparisonReady -> {
+                markStageCompleted(RunningStage.IP_COMPARISON)
+                ensureCardVisible(cardIpComparison, animate = false)
+                displayIpComparison(update.result, activeCheckPrivacyMode)
+                animateContentReveal(textIpComparisonSummary, ipComparisonGroups)
+            }
+            is CheckUpdate.DirectSignsReady -> {
+                markStageCompleted(RunningStage.DIRECT)
+                ensureCardVisible(cardDirect, animate = false)
+                displayCategory(
+                    update.result,
+                    cardDirect,
+                    iconDirect,
+                    statusDirect,
+                    findingsDirect,
+                    activeCheckPrivacyMode,
+                )
+                animateContentReveal(findingsDirect)
+            }
+            is CheckUpdate.IndirectSignsReady -> {
+                markStageCompleted(RunningStage.INDIRECT)
+                ensureCardVisible(cardIndirect, animate = false)
+                displayCategory(
+                    update.result,
+                    cardIndirect,
+                    iconIndirect,
+                    statusIndirect,
+                    findingsIndirect,
+                    activeCheckPrivacyMode,
+                )
+                animateContentReveal(findingsIndirect)
+            }
+            is CheckUpdate.LocationSignalsReady -> {
+                markStageCompleted(RunningStage.LOCATION)
+                ensureCardVisible(cardLocation, animate = false)
+                displayCategory(
+                    update.result,
+                    cardLocation,
+                    iconLocation,
+                    statusLocation,
+                    findingsLocation,
+                    activeCheckPrivacyMode,
+                )
+                animateContentReveal(findingsLocation, locationInfoSection, locationDivider)
+            }
+            is CheckUpdate.BypassProgress -> {
+                showLoadingCardForStage(RunningStage.BYPASS)
+                updateBypassProgress(update.progress)
+            }
+            is CheckUpdate.BypassReady -> {
+                markStageCompleted(RunningStage.BYPASS)
+                ensureCardVisible(cardBypass, animate = false)
+                displayBypass(update.result, activeCheckPrivacyMode)
+                animateContentReveal(findingsBypass)
+            }
+            is CheckUpdate.VerdictReady -> {
+                ensureCardVisible(cardVerdict, shouldAutoScroll = true)
+                displayVerdict(update.verdict)
+                animateContentReveal(iconVerdict, textVerdict)
+            }
+        }
+    }
+
+    private fun showLoadingCardForStage(stage: RunningStage) {
+        if (stage in completedStages) return
+        if (stage in loadingStages && cardForStage(stage).visibility == View.VISIBLE) return
+
+        loadingStages += stage
+        when (stage) {
+            RunningStage.GEO_IP -> showCategoryLoading(
+                stage = stage,
+                card = cardGeoIp,
+                icon = iconGeoIp,
+                status = statusGeoIp,
+                findingsContainer = findingsGeoIp,
+                hint = stageLoadingMessage(stage),
+                infoSection = geoIpInfoSection,
+                infoDivider = geoIpDivider,
+            )
+            RunningStage.IP_COMPARISON -> showIpComparisonLoading(stage)
+            RunningStage.DIRECT -> showCategoryLoading(
+                stage = stage,
+                card = cardDirect,
+                icon = iconDirect,
+                status = statusDirect,
+                findingsContainer = findingsDirect,
+                hint = stageLoadingMessage(stage),
+            )
+            RunningStage.INDIRECT -> showCategoryLoading(
+                stage = stage,
+                card = cardIndirect,
+                icon = iconIndirect,
+                status = statusIndirect,
+                findingsContainer = findingsIndirect,
+                hint = stageLoadingMessage(stage),
+            )
+            RunningStage.LOCATION -> showCategoryLoading(
+                stage = stage,
+                card = cardLocation,
+                icon = iconLocation,
+                status = statusLocation,
+                findingsContainer = findingsLocation,
+                hint = stageLoadingMessage(stage),
+                infoSection = locationInfoSection,
+                infoDivider = locationDivider,
+            )
+            RunningStage.BYPASS -> showBypassLoading(stage)
+        }
+        syncLoadingStatusAnimation()
+    }
+
+    private fun showCategoryLoading(
+        stage: RunningStage,
+        card: MaterialCardView,
+        icon: ImageView,
+        status: TextView,
+        findingsContainer: LinearLayout,
+        hint: String,
+        infoSection: LinearLayout? = null,
+        infoDivider: View? = null,
+    ) {
+        bindCardLoadingState(stage, icon, status)
+        infoSection?.apply {
+            removeAllViews()
+            visibility = View.GONE
+        }
+        infoDivider?.visibility = View.GONE
+        findingsContainer.removeAllViews()
+        findingsContainer.addView(createLoadingHintView(hint))
+        findingsContainer.visibility = View.VISIBLE
+        ensureCardVisible(card)
+    }
+
+    private fun showIpComparisonLoading(stage: RunningStage) {
+        bindCardLoadingState(stage, iconIpComparison, statusIpComparison)
+        textIpComparisonSummary.text = stageLoadingMessage(stage)
+        ipComparisonGroups.removeAllViews()
+        ipComparisonGroups.visibility = View.GONE
+        ensureCardVisible(cardIpComparison)
+    }
+
+    private fun showBypassLoading(stage: RunningStage) {
+        bindCardLoadingState(stage, iconBypass, statusBypass)
+        findingsBypass.removeAllViews()
+        findingsBypass.visibility = View.GONE
+        if (bypassProgressLines.isEmpty()) {
+            textBypassProgress.text = stageLoadingMessage(stage)
+        }
+        textBypassProgress.visibility = View.VISIBLE
+        ensureCardVisible(cardBypass)
+    }
+
+    private fun markStageCompleted(stage: RunningStage) {
+        completedStages += stage
+        finalizeLoadingStage(stage)
+    }
+
+    private fun finalizeLoadingStage(stage: RunningStage) {
+        loadingStages.remove(stage)
+        syncLoadingStatusAnimation()
+    }
+
+    private fun markLoadingStagesCancelled() {
+        loadingStages.toList().forEach { stage ->
+            when (stage) {
+                RunningStage.GEO_IP -> showCategoryStopped(
+                    card = cardGeoIp,
+                    icon = iconGeoIp,
+                    status = statusGeoIp,
+                    findingsContainer = findingsGeoIp,
+                    message = stageStoppedMessage(stage),
+                    infoSection = geoIpInfoSection,
+                    infoDivider = geoIpDivider,
+                )
+                RunningStage.IP_COMPARISON -> showIpComparisonStopped(stage)
+                RunningStage.DIRECT -> showCategoryStopped(
+                    card = cardDirect,
+                    icon = iconDirect,
+                    status = statusDirect,
+                    findingsContainer = findingsDirect,
+                    message = stageStoppedMessage(stage),
+                )
+                RunningStage.INDIRECT -> showCategoryStopped(
+                    card = cardIndirect,
+                    icon = iconIndirect,
+                    status = statusIndirect,
+                    findingsContainer = findingsIndirect,
+                    message = stageStoppedMessage(stage),
+                )
+                RunningStage.LOCATION -> showCategoryStopped(
+                    card = cardLocation,
+                    icon = iconLocation,
+                    status = statusLocation,
+                    findingsContainer = findingsLocation,
+                    message = stageStoppedMessage(stage),
+                    infoSection = locationInfoSection,
+                    infoDivider = locationDivider,
+                )
+                RunningStage.BYPASS -> showBypassStopped(stage)
+            }
+        }
+        loadingStages.clear()
+    }
+
+    private fun showCategoryStopped(
+        card: MaterialCardView,
+        icon: ImageView,
+        status: TextView,
+        findingsContainer: LinearLayout,
+        message: String,
+        infoSection: LinearLayout? = null,
+        infoDivider: View? = null,
+    ) {
+        icon.setImageResource(R.drawable.ic_help)
+        status.text = "Остановлено"
+        status.setTextColor(ContextCompat.getColor(this, R.color.verdict_yellow))
+        infoSection?.apply {
+            removeAllViews()
+            visibility = View.GONE
+        }
+        infoDivider?.visibility = View.GONE
+        findingsContainer.removeAllViews()
+        findingsContainer.addView(createLoadingHintView(message))
+        findingsContainer.visibility = View.VISIBLE
+        ensureCardVisible(card, animate = false)
+    }
+
+    private fun showIpComparisonStopped(stage: RunningStage) {
+        iconIpComparison.setImageResource(R.drawable.ic_help)
+        statusIpComparison.text = "Остановлено"
+        statusIpComparison.setTextColor(ContextCompat.getColor(this, R.color.verdict_yellow))
+        textIpComparisonSummary.text = stageStoppedMessage(stage)
+        ipComparisonGroups.removeAllViews()
+        ipComparisonGroups.visibility = View.GONE
+        ensureCardVisible(cardIpComparison, animate = false)
+    }
+
+    private fun showBypassStopped(stage: RunningStage) {
+        iconBypass.setImageResource(R.drawable.ic_help)
+        statusBypass.text = "Остановлено"
+        statusBypass.setTextColor(ContextCompat.getColor(this, R.color.verdict_yellow))
+        findingsBypass.removeAllViews()
+        findingsBypass.visibility = View.GONE
+        textBypassProgress.text = stageStoppedMessage(stage)
+        textBypassProgress.visibility = View.VISIBLE
+        ensureCardVisible(cardBypass, animate = false)
+    }
+
+    private fun bindCardLoadingState(stage: RunningStage, icon: ImageView, status: TextView) {
+        icon.setImageResource(R.drawable.ic_help)
+        status.text = stageLoadingStatusBase(stage)
+        status.setTextColor(ContextCompat.getColor(this, R.color.md_on_surface_variant))
+    }
+
+    private fun syncLoadingStatusAnimation() {
+        if (loadingStages.isEmpty()) {
+            stopLoadingStatusAnimation()
+            return
+        }
+
+        updateLoadingStatuses()
+        if (loadingStatusJob?.isActive == true) return
+
+        loadingStatusJob = lifecycleScope.launch {
+            while (isActive && loadingStages.isNotEmpty()) {
+                delay(LOADING_STATUS_FRAME_MS)
+                loadingAnimationFrame = (loadingAnimationFrame + 1) % 4
+                updateLoadingStatuses()
+            }
+        }
+    }
+
+    private fun stopLoadingStatusAnimation() {
+        loadingStatusJob?.cancel()
+        loadingStatusJob = null
+        loadingAnimationFrame = 0
+    }
+
+    private fun updateLoadingStatuses() {
+        val dots = when (loadingAnimationFrame) {
+            0 -> ""
+            1 -> "."
+            2 -> ".."
+            else -> "..."
+        }
+        loadingStages.forEach { stage ->
+            statusViewForStage(stage).text = stageLoadingStatusBase(stage) + dots
+        }
+    }
+
+    private fun stageLoadingStatusBase(stage: RunningStage): String {
+        return when (stage) {
+            RunningStage.BYPASS -> "Сканирование"
+            else -> "Проверяется"
+        }
+    }
+
+    private fun stageLoadingMessage(stage: RunningStage): String {
+        return when (stage) {
+            RunningStage.GEO_IP -> "Сверяем страну, ASN и признаки хостинга."
+            RunningStage.IP_COMPARISON -> "Сравниваем внешний IP через несколько независимых сервисов."
+            RunningStage.DIRECT -> "Ищем прямые признаки VPN, прокси и установленных клиентов."
+            RunningStage.INDIRECT -> "Проверяем интерфейсы, DNS, маршруты и локальные технические сигналы."
+            RunningStage.LOCATION -> "Собираем сигналы оператора, вышек и ближайших Wi-Fi точек."
+            RunningStage.BYPASS -> "Ищем локальный split tunnel bypass и доступные proxy endpoints."
+        }
+    }
+
+    private fun stageStoppedMessage(stage: RunningStage): String {
+        return when (stage) {
+            RunningStage.BYPASS -> "Сканирование остановлено до завершения этого этапа."
+            else -> "Проверка этого этапа была остановлена до завершения."
+        }
+    }
+
+    private fun cardForStage(stage: RunningStage): MaterialCardView {
+        return when (stage) {
+            RunningStage.GEO_IP -> cardGeoIp
+            RunningStage.IP_COMPARISON -> cardIpComparison
+            RunningStage.DIRECT -> cardDirect
+            RunningStage.INDIRECT -> cardIndirect
+            RunningStage.LOCATION -> cardLocation
+            RunningStage.BYPASS -> cardBypass
+        }
+    }
+
+    private fun statusViewForStage(stage: RunningStage): TextView {
+        return when (stage) {
+            RunningStage.GEO_IP -> statusGeoIp
+            RunningStage.IP_COMPARISON -> statusIpComparison
+            RunningStage.DIRECT -> statusDirect
+            RunningStage.INDIRECT -> statusIndirect
+            RunningStage.LOCATION -> statusLocation
+            RunningStage.BYPASS -> statusBypass
+        }
+    }
+
+    private fun ensureCardVisible(
+        card: MaterialCardView,
+        animate: Boolean = true,
+        shouldAutoScroll: Boolean = false,
+    ) {
+        val wasVisible = card.visibility == View.VISIBLE
+        if (!wasVisible) {
+            card.animate().cancel()
+            card.visibility = View.VISIBLE
+            if (animate) {
+                card.alpha = 0f
+                card.translationY = 12.dp.toFloat()
+                card.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(220L)
+                    .withEndAction {
+                        if (shouldAutoScroll && !hasUserScrolledManually) {
+                            scrollToCard(card)
+                        }
+                    }
+                    .start()
+            } else {
+                card.alpha = 1f
+                card.translationY = 0f
+                if (shouldAutoScroll && !hasUserScrolledManually) {
+                    scrollToCard(card)
+                }
+            }
+            return
+        }
+
+        if (shouldAutoScroll && !hasUserScrolledManually) {
+            scrollToCard(card)
+        }
+    }
+
+    private fun scrollToCard(card: View) {
+        isAutoScrollInProgress = true
+        resultsScrollView.post {
+            val targetY = (card.top - 12.dp).coerceAtLeast(0)
+            resultsScrollView.smoothScrollTo(0, targetY)
+            resultsScrollView.postDelayed(
+                { isAutoScrollInProgress = false },
+                AUTO_SCROLL_LOCK_MS,
+            )
+        }
+    }
+
+    private fun animateContentReveal(vararg views: View) {
+        views.forEach { view ->
+            if (view.visibility != View.VISIBLE) return@forEach
+            view.animate().cancel()
+            view.alpha = 0f
+            view.translationY = 6.dp.toFloat()
+            view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(180L)
+                .start()
+        }
+    }
+
+    private fun createLoadingHintView(message: String): View {
+        return TextView(this).apply {
+            text = message
+            textSize = 13f
+            setLineSpacing(2.dp.toFloat(), 1f)
+            setPadding(0, 8.dp, 0, 2.dp)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+    }
+
+    private fun hideCards() {
+        listOf(
+            cardGeoIp,
+            cardIpComparison,
+            cardDirect,
+            cardIndirect,
+            cardLocation,
+            cardBypass,
+            cardVerdict,
+        ).forEach { card ->
+            card.animate().cancel()
+            card.alpha = 1f
+            card.translationY = 0f
+            card.visibility = View.GONE
+        }
     }
 
     private fun displayCategory(
@@ -432,6 +983,7 @@ class MainActivity : AppCompatActivity() {
         privacyMode: Boolean = false,
     ) {
         card.visibility = View.VISIBLE
+        findingsContainer.visibility = View.VISIBLE
 
         bindCardStatus(category.detected, category.needsReview, icon, status, hasError = category.hasError)
 
@@ -474,6 +1026,7 @@ class MainActivity : AppCompatActivity() {
         privacyMode: Boolean,
     ) {
         infoSection.removeAllViews()
+        infoSection.visibility = if (infoFindings.isNotEmpty()) View.VISIBLE else View.GONE
         for (finding in infoFindings) {
             val parts = finding.description.split(": ", limit = 2)
             if (parts.size == 2) {
@@ -496,6 +1049,7 @@ class MainActivity : AppCompatActivity() {
         textIpComparisonSummary.text = result.summary
 
         ipComparisonGroups.removeAllViews()
+        ipComparisonGroups.visibility = View.VISIBLE
         ipComparisonGroups.addView(
             createIpCheckerGroupView(
                 group = result.ruGroup,
@@ -757,6 +1311,7 @@ class MainActivity : AppCompatActivity() {
         bindCardStatus(bypass.detected, bypass.needsReview, iconBypass, statusBypass)
 
         findingsBypass.removeAllViews()
+        findingsBypass.visibility = View.VISIBLE
         for (finding in bypass.findings) {
             findingsBypass.addView(createFindingView(finding, privacyMode))
         }
@@ -861,5 +1416,9 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_RATIONALE_SHOWN = "permissions_rationale_shown"
         private const val PREF_REQUESTED_PERMISSIONS = "requested_permissions"
         private const val STATE_RUN_CHECK_NOTICE_HIDDEN = "state_run_check_notice_hidden"
+        private const val CHECK_STATUS_STOPPED = "Проверка остановлена"
+        private const val INITIAL_CARD_STAGGER_MS = 70L
+        private const val LOADING_STATUS_FRAME_MS = 420L
+        private const val AUTO_SCROLL_LOCK_MS = 450L
     }
 }

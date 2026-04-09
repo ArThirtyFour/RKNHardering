@@ -25,6 +25,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
+        android:id="@+id/resultsScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -99,13 +100,14 @@
                     android:textSize="12sp" />
             </com.google.android.material.card.MaterialCardView>
 
-            <ProgressBar
-                android:id="@+id/progressBar"
-                style="?android:attr/progressBarStyleHorizontal"
+            <TextView
+                android:id="@+id/textCheckStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:indeterminate="true"
+                android:lineSpacingExtra="2dp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="12sp"
                 android:visibility="gone" />
 
             <!-- GeoIP Card -->

@@ -6,6 +6,7 @@ import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpComparisonResult
+import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.network.DnsResolverConfig
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -19,12 +20,23 @@ data class CheckSettings(
     val portRangeEnd: Int = 65535,
 )
 
+sealed interface CheckUpdate {
+    data class GeoIpReady(val result: CategoryResult) : CheckUpdate
+    data class IpComparisonReady(val result: IpComparisonResult) : CheckUpdate
+    data class DirectSignsReady(val result: CategoryResult) : CheckUpdate
+    data class IndirectSignsReady(val result: CategoryResult) : CheckUpdate
+    data class LocationSignalsReady(val result: CategoryResult) : CheckUpdate
+    data class BypassProgress(val progress: BypassChecker.Progress) : CheckUpdate
+    data class BypassReady(val result: BypassResult) : CheckUpdate
+    data class VerdictReady(val verdict: Verdict) : CheckUpdate
+}
+
 object VpnCheckRunner {
 
     suspend fun run(
         context: Context,
         settings: CheckSettings = CheckSettings(),
-        onBypassProgress: (suspend (BypassChecker.Progress) -> Unit)? = null,
+        onUpdate: (suspend (CheckUpdate) -> Unit)? = null,
     ): CheckResult = coroutineScope {
         val geoIpDeferred = if (settings.networkRequestsEnabled) {
             async { GeoIpChecker.check(settings.resolverConfig) }
@@ -50,10 +62,49 @@ object VpnCheckRunner {
                     portRange = settings.portRange,
                     portRangeStart = settings.portRangeStart,
                     portRangeEnd = settings.portRangeEnd,
-                    onProgress = onBypassProgress,
+                    onProgress = { progress ->
+                        onUpdate?.invoke(CheckUpdate.BypassProgress(progress))
+                    },
                 )
             }
         } else null
+
+        val geoIpReadyDeferred = geoIpDeferred?.let { deferred ->
+            async {
+                deferred.await().also { result ->
+                    onUpdate?.invoke(CheckUpdate.GeoIpReady(result))
+                }
+            }
+        }
+        val ipComparisonReadyDeferred = ipComparisonDeferred?.let { deferred ->
+            async {
+                deferred.await().also { result ->
+                    onUpdate?.invoke(CheckUpdate.IpComparisonReady(result))
+                }
+            }
+        }
+        val directReadyDeferred = async {
+            directDeferred.await().also { result ->
+                onUpdate?.invoke(CheckUpdate.DirectSignsReady(result))
+            }
+        }
+        val indirectReadyDeferred = async {
+            indirectDeferred.await().also { result ->
+                onUpdate?.invoke(CheckUpdate.IndirectSignsReady(result))
+            }
+        }
+        val locationReadyDeferred = async {
+            locationDeferred.await().also { result ->
+                onUpdate?.invoke(CheckUpdate.LocationSignalsReady(result))
+            }
+        }
+        val bypassReadyDeferred = bypassDeferred?.let { deferred ->
+            async {
+                deferred.await().also { result ->
+                    onUpdate?.invoke(CheckUpdate.BypassReady(result))
+                }
+            }
+        }
 
         val emptyGeoIpCategory = CategoryResult(name = "GeoIP", detected = false, findings = emptyList())
         val emptyIpComparison = IpComparisonResult(
@@ -83,12 +134,12 @@ object VpnCheckRunner {
             detected = false,
         )
 
-        val geoIp = geoIpDeferred?.await() ?: emptyGeoIpCategory
-        val ipComparison = ipComparisonDeferred?.await() ?: emptyIpComparison
-        val directSigns = directDeferred.await()
-        val indirectSigns = indirectDeferred.await()
-        val locationSignals = locationDeferred.await()
-        val bypassResult = bypassDeferred?.await() ?: emptyBypass
+        val geoIp = geoIpReadyDeferred?.await() ?: emptyGeoIpCategory
+        val ipComparison = ipComparisonReadyDeferred?.await() ?: emptyIpComparison
+        val directSigns = directReadyDeferred.await()
+        val indirectSigns = indirectReadyDeferred.await()
+        val locationSignals = locationReadyDeferred.await()
+        val bypassResult = bypassReadyDeferred?.await() ?: emptyBypass
 
         val verdict = VerdictEngine.evaluate(
             geoIp = geoIp,
@@ -97,6 +148,7 @@ object VpnCheckRunner {
             locationSignals = locationSignals,
             bypassResult = bypassResult,
         )
+        onUpdate?.invoke(CheckUpdate.VerdictReady(verdict))
 
         CheckResult(
             geoIp = geoIp,
