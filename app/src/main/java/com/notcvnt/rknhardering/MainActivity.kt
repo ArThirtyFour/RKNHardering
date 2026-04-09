@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
     private var activeCheckPrivacyMode = false
     private var isVerdictDetailsExpanded = false
 
-    private val prefs by lazy { getSharedPreferences("rknhardering_prefs", MODE_PRIVATE) }
+    private val prefs by lazy { AppUiSettings.prefs(this) }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -148,8 +148,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val themePrefs = getSharedPreferences("rknhardering_prefs", MODE_PRIVATE)
-        SettingsActivity.applyTheme(themePrefs.getString(SettingsActivity.PREF_THEME, "system") ?: "system")
+        AppUiSettings.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)

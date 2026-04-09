@@ -11,7 +11,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
@@ -54,6 +53,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var chipGroupLanguage: ChipGroup
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppUiSettings.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_settings)
@@ -64,7 +64,7 @@ class SettingsActivity : AppCompatActivity() {
             insets
         }
 
-        prefs = getSharedPreferences("rknhardering_prefs", MODE_PRIVATE)
+        prefs = AppUiSettings.prefs(this)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.setNavigationOnClickListener { finish() }
@@ -244,13 +244,8 @@ class SettingsActivity : AppCompatActivity() {
                 R.id.chipLangZh -> "zh-CN"
                 else -> ""
             }
-            prefs.edit().putString(PREF_LANGUAGE, value).apply()
-            val localeList = if (value.isEmpty()) {
-                LocaleListCompat.getEmptyLocaleList()
-            } else {
-                LocaleListCompat.forLanguageTags(value)
-            }
-            AppCompatDelegate.setApplicationLocales(localeList)
+            prefs.edit().putString(PREF_LANGUAGE, value).commit()
+            AppUiSettings.applyLanguage(value)
         }
 
         findViewById<MaterialCardView>(R.id.cardPermissions).setOnClickListener {
