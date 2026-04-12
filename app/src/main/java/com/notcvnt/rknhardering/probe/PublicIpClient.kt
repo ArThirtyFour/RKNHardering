@@ -25,6 +25,7 @@ object PublicIpClient {
         proxy: Proxy? = null,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         network: Network? = null,
+        bindSocketOnly: Boolean = false,
     ): Result<String> {
         return try {
             val response = ResolverNetworkStack.execute(
@@ -38,6 +39,7 @@ object PublicIpClient {
                 config = resolverConfig,
                 proxy = proxy,
                 network = network,
+                bindSocketOnly = bindSocketOnly,
             )
             val code = response.code
             if (code !in 200..299) {

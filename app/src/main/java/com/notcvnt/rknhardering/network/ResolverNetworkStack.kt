@@ -17,8 +17,10 @@ import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.Proxy
+import java.net.Socket
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
+import javax.net.SocketFactory
 import kotlin.random.Random
 
 data class ResolverHttpResponse(
@@ -63,6 +65,7 @@ object ResolverNetworkStack {
         config: DnsResolverConfig,
         proxy: Proxy? = null,
         network: Network? = null,
+        bindSocketOnly: Boolean = false,
     ): ResolverHttpResponse {
         val requestBuilder = Request.Builder().url(url)
         headers.forEach { (name, value) -> requestBuilder.header(name, value) }
@@ -72,7 +75,7 @@ object ResolverNetworkStack {
             "POST" -> requestBuilder.post(requestBody ?: ByteArray(0).toRequestBody(bodyContentType?.toMediaTypeOrNull()))
             else -> requestBuilder.method(method.uppercase(), requestBody)
         }
-        val client = baseClient(config, network)
+        val client = baseClient(config, network, bindSocketOnly = bindSocketOnly && network != null)
             .newBuilder()
             .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
@@ -91,13 +94,18 @@ object ResolverNetworkStack {
         }
     }
 
-    private fun baseClient(config: DnsResolverConfig, network: Network? = null): OkHttpClient {
+    private fun baseClient(
+        config: DnsResolverConfig,
+        network: Network? = null,
+        bindSocketOnly: Boolean = false,
+    ): OkHttpClient {
         val normalized = config.sanitized()
         if (network != null) {
             return buildClient(
                 config = normalized,
-                dns = createDns(normalized, network),
+                dns = if (bindSocketOnly) Dns.SYSTEM else createDns(normalized, network),
                 network = network,
+                bindSocketOnly = bindSocketOnly,
             )
         }
         val cached = cachedConfig
@@ -145,6 +153,7 @@ object ResolverNetworkStack {
         config: DnsResolverConfig,
         dns: Dns = createDns(config),
         network: Network? = null,
+        bindSocketOnly: Boolean = false,
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .dns(dns)
@@ -152,7 +161,11 @@ object ResolverNetworkStack {
             .followSslRedirects(true)
             .apply {
                 if (network != null) {
-                    socketFactory(network.socketFactory)
+                    if (bindSocketOnly) {
+                        socketFactory(BindSocketFactory(network))
+                    } else {
+                        socketFactory(network.socketFactory)
+                    }
                 }
             }
             .build()
@@ -193,6 +206,24 @@ object ResolverNetworkStack {
         if (!DnsResolverConfig.isValidIpLiteral(value)) return null
         return runCatching { InetAddress.getByName(value.trim()) }.getOrNull()
     }
+}
+
+/**
+ * SocketFactory that calls Network.bindSocket() on each unconnected socket before it is used.
+ * Only the no-arg createSocket() matters for OkHttp — it creates an unconnected socket which
+ * OkHttp then connects itself. The other overloads connect immediately in the constructor so
+ * bindSocket has no effect on them; they are included only to satisfy the abstract contract.
+ */
+private class BindSocketFactory(
+    private val network: Network,
+) : SocketFactory() {
+    override fun createSocket(): Socket = Socket().also { network.bindSocket(it) }
+    override fun createSocket(host: String, port: Int): Socket = Socket(host, port)
+    override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket =
+        Socket(host, port, localHost, localPort)
+    override fun createSocket(host: InetAddress, port: Int): Socket = Socket(host, port)
+    override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket =
+        Socket(address, port, localAddress, localPort)
 }
 
 private class NetworkDns(

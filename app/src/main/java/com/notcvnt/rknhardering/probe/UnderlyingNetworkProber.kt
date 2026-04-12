@@ -139,6 +139,20 @@ object UnderlyingNetworkProber {
             if (result.isSuccess) return result
             lastError = result.exceptionOrNull() as? Exception ?: lastError
         }
+        // Fallback: use system DNS + Network.bindSocket (equivalent to curl --interface tun0).
+        // Apps excluded from VPN via per-app split tunnel cannot use network.socketFactory
+        // to reach the VPN network, but bindSocket still works because it operates at the
+        // socket level (SO_BINDTODEVICE) rather than through Android's network routing API.
+        for (endpoint in IP_ENDPOINTS) {
+            val result = PublicIpClient.fetchIp(
+                endpoint = endpoint.url,
+                timeoutMs = TIMEOUT_MS,
+                resolverConfig = resolverConfig,
+                network = network,
+                bindSocketOnly = true,
+            )
+            if (result.isSuccess) return result
+        }
         return Result.failure(lastError ?: IOException("All IP endpoints failed"))
     }
 }
