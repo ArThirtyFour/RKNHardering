@@ -48,7 +48,11 @@ object DirectSignsChecker {
 
         tunActiveProbeResult
             ?.takeIf { it.vpnActive }
-            ?.let { reportTunActiveProbe(context, it, findings) }
+            ?.let { result ->
+                val tunActiveProbeOutcome = reportTunActiveProbe(context, result, findings, evidence)
+                detected = detected || tunActiveProbeOutcome.detected
+                needsReview = needsReview || tunActiveProbeOutcome.needsReview
+            }
 
         val appDetection = InstalledVpnAppDetector.detect(context)
         findings += appDetection.findings
@@ -293,24 +297,55 @@ object DirectSignsChecker {
         )
     }
 
-    internal fun reportTunActiveProbe(
+    private fun reportTunActiveProbe(
         context: Context,
         result: UnderlyingNetworkProber.ProbeResult,
         findings: MutableList<Finding>,
-    ) {
-        val description = result.vpnIp
-            ?.let { context.getString(R.string.checker_bypass_tun_probe_success, it) }
-            ?: result.vpnError
-                ?.takeIf { it.isNotBlank() }
-                ?.let { context.getString(R.string.checker_bypass_tun_probe_failure_reason, it) }
-                ?: context.getString(R.string.checker_bypass_tun_probe_failure)
+        evidence: MutableList<EvidenceItem>,
+    ): SignalOutcome {
+        result.vpnIp?.let { vpnIp ->
+            val description = context.getString(R.string.checker_bypass_tun_probe_success, vpnIp)
+            findings.add(
+                Finding(
+                    description = description,
+                    detected = true,
+                    source = EvidenceSource.TUN_ACTIVE_PROBE,
+                    confidence = EvidenceConfidence.HIGH,
+                ),
+            )
+            evidence.add(
+                EvidenceItem(
+                    source = EvidenceSource.TUN_ACTIVE_PROBE,
+                    detected = true,
+                    confidence = EvidenceConfidence.HIGH,
+                    description = "A request via VPN network returned public IP $vpnIp",
+                ),
+            )
+            return SignalOutcome(detected = true)
+        }
+
+        result.vpnError
+            ?.takeIf { it.isNotBlank() }
+            ?.let { vpnError ->
+                findings.add(
+                    Finding(
+                        description = context.getString(R.string.checker_bypass_tun_probe_failure_reason, vpnError),
+                        needsReview = true,
+                        source = EvidenceSource.TUN_ACTIVE_PROBE,
+                        confidence = EvidenceConfidence.LOW,
+                    ),
+                )
+                return SignalOutcome(needsReview = true)
+            }
+
         findings.add(
             Finding(
-                description = description,
+                description = context.getString(R.string.checker_bypass_tun_probe_failure),
                 isInformational = true,
                 source = EvidenceSource.TUN_ACTIVE_PROBE,
             ),
         )
+        return SignalOutcome()
     }
 
     internal fun isKnownProxyPort(port: String?): Boolean {

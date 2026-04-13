@@ -17,9 +17,11 @@ import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.network.DnsResolverConfig
+import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -130,6 +132,59 @@ class VpnCheckRunnerTest {
 
         assertEquals(false, capturedProxyScanEnabled)
         assertEquals(true, capturedXrayApiScanEnabled)
+    }
+
+    @Test
+    fun `shared underlying probe reaches direct and bypass checks`() = runBlocking {
+        val sharedProbe = UnderlyingNetworkProber.ProbeResult(
+            vpnActive = true,
+            underlyingReachable = false,
+            vpnIp = "198.51.100.10",
+            vpnError = "EPERM",
+            activeNetworkIsVpn = true,
+        )
+        var probeCalls = 0
+        var directProbeResult: UnderlyingNetworkProber.ProbeResult? = null
+        var bypassProbeResult: UnderlyingNetworkProber.ProbeResult? = null
+
+        VpnCheckRunner.dependenciesOverride = VpnCheckRunner.Dependencies(
+            geoIpCheck = { _, _ -> category("geo") },
+            ipComparisonCheck = { _, _ -> emptyIpComparison() },
+            underlyingProbe = { _, _ ->
+                probeCalls += 1
+                sharedProbe
+            },
+            directCheck = { _, tunActiveProbeResult ->
+                directProbeResult = tunActiveProbeResult
+                category("direct")
+            },
+            indirectCheck = { _, _, _, _ -> category("indirect") },
+            locationCheck = { _, _, _ -> category("location") },
+            bypassCheck = { _, _, _, _, _, _, _, _, underlyingProbeDeferred, _ ->
+                bypassProbeResult = underlyingProbeDeferred?.await()
+                BypassResult(
+                    proxyEndpoint = null,
+                    directIp = null,
+                    proxyIp = null,
+                    xrayApiScanResult = null,
+                    findings = emptyList(),
+                    detected = false,
+                )
+            },
+        )
+
+        VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = true,
+                networkRequestsEnabled = false,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        )
+
+        assertEquals(1, probeCalls)
+        assertSame(sharedProbe, directProbeResult)
+        assertSame(sharedProbe, bypassProbeResult)
     }
 
     private fun category(

@@ -3,7 +3,6 @@ package com.notcvnt.rknhardering.checker
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.notcvnt.rknhardering.model.EvidenceSource
-import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -69,50 +68,56 @@ class DirectSignsCheckerTest {
     }
 
     @Test
-    fun `tun probe success is reported in direct signs`() {
-        val findings = mutableListOf<Finding>()
-
-        DirectSignsChecker.reportTunActiveProbe(
+    fun `check marks tun probe success as detected direct signal`() {
+        val result = DirectSignsChecker.check(
             context = context,
-            result = UnderlyingNetworkProber.ProbeResult(
+            tunActiveProbeResult = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
                 vpnIp = "198.51.100.10",
                 activeNetworkIsVpn = true,
             ),
-            findings = findings,
         )
 
         assertTrue(
-            findings.any {
-                it.isInformational &&
+            result.findings.any {
+                it.detected &&
                     it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
+                    it.description.contains("198.51.100.10")
+            },
+        )
+        assertTrue(result.detected)
+        assertFalse(result.needsReview)
+        assertTrue(
+            result.evidence.any {
+                it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
+                    it.detected &&
                     it.description.contains("198.51.100.10")
             },
         )
     }
 
     @Test
-    fun `tun probe failure reason is reported in direct signs`() {
-        val findings = mutableListOf<Finding>()
-
-        DirectSignsChecker.reportTunActiveProbe(
+    fun `check marks tun probe failure as needs review`() {
+        val result = DirectSignsChecker.check(
             context = context,
-            result = UnderlyingNetworkProber.ProbeResult(
+            tunActiveProbeResult = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
                 vpnError = "timeout",
                 activeNetworkIsVpn = true,
             ),
-            findings = findings,
         )
 
         assertTrue(
-            findings.any {
-                it.isInformational &&
+            result.findings.any {
+                it.needsReview &&
                     it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
                     it.description.contains("timeout")
             },
         )
+        assertFalse(result.detected)
+        assertTrue(result.needsReview)
+        assertTrue(result.evidence.none { it.source == EvidenceSource.TUN_ACTIVE_PROBE && it.detected })
     }
 }

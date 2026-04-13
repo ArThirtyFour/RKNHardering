@@ -4,6 +4,7 @@ import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.network.ResolverBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
 
@@ -77,12 +78,42 @@ object IfconfigClient {
         val fallbackResult = fetchFirstSuccessfulIp(ENDPOINTS) { endpoint ->
             PublicIpClient.fetchIp(
                 endpoint = endpoint.url,
-                    timeoutMs = timeoutMs,
-                    proxy = proxy,
-                    resolverConfig = resolverConfig,
-                    binding = fallbackBinding,
-                )
+                timeoutMs = timeoutMs,
+                proxy = proxy,
+                resolverConfig = resolverConfig,
+                binding = fallbackBinding,
+            )
         }
-        if (fallbackResult.isSuccess) fallbackResult else primaryResult
+
+        if (fallbackResult.isSuccess) {
+            return@withContext fallbackResult
+        }
+
+        return@withContext Result.failure(
+            composeDualBindingFailure(
+                primaryError = primaryResult.exceptionOrNull(),
+                fallbackError = fallbackResult.exceptionOrNull(),
+                fallbackBinding = fallbackBinding,
+            ),
+        )
+    }
+
+    private fun composeDualBindingFailure(
+        primaryError: Throwable?,
+        fallbackError: Throwable?,
+        fallbackBinding: ResolverBinding.OsDeviceBinding,
+    ): IOException {
+        val primaryMessage = primaryError.renderMessage()
+        val fallbackMessage = fallbackError.renderMessage()
+        return IOException(
+            "Android Network binding failed: $primaryMessage; " +
+                "SO_BINDTODEVICE(${fallbackBinding.interfaceName}) failed: $fallbackMessage",
+        )
+    }
+
+    private fun Throwable?.renderMessage(): String {
+        return this?.message
+            ?: this?.javaClass?.simpleName
+            ?: "unknown error"
     }
 }

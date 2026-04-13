@@ -40,16 +40,6 @@ object UnderlyingNetworkProber {
         val activeNetworkIsVpn: Boolean? = null,
     )
 
-    private val IP_ENDPOINTS = listOf(
-        IpEndpointSpec("https://ifconfig.me/ip"),
-        IpEndpointSpec("https://checkip.amazonaws.com"),
-        IpEndpointSpec("https://ip.mail.ru"),
-        IpEndpointSpec("https://api4.ipify.org"),
-        IpEndpointSpec("https://api6.ipify.org", IpEndpointFamilyHint.IPV6),
-    )
-
-    private const val TIMEOUT_MS = 7000
-
     @Suppress("DEPRECATION")
     suspend fun probe(
         context: Context,
@@ -136,41 +126,23 @@ object UnderlyingNetworkProber {
         boundNetwork: BoundNetwork,
         resolverConfig: DnsResolverConfig,
     ): Result<String> {
-        val primaryBinding = ResolverBinding.AndroidNetworkBinding(boundNetwork.network)
-        val primaryResult = fetchFirstSuccessfulIp(IP_ENDPOINTS) { endpoint ->
-            PublicIpClient.fetchIp(
-                endpoint = endpoint.url,
-                timeoutMs = TIMEOUT_MS,
-                resolverConfig = resolverConfig,
-                binding = primaryBinding,
-            )
-        }
-        if (primaryResult.isSuccess) {
-            return primaryResult
-        }
-
-        val fallbackBinding = NetworkInterfaceNameNormalizer.canonicalName(boundNetwork.interfaceName)
+        val fallbackBinding = boundNetwork.interfaceName
             ?.takeIf { it.isNotBlank() }
             ?.let { ResolverBinding.OsDeviceBinding(it, dnsMode = ResolverBinding.DnsMode.SYSTEM) }
-        if (fallbackBinding == null) {
-            val message = primaryResult.exceptionOrNull()?.message?.let {
+
+        val result = IfconfigClient.fetchIpViaNetwork(
+            primaryBinding = ResolverBinding.AndroidNetworkBinding(boundNetwork.network),
+            fallbackBinding = fallbackBinding,
+            resolverConfig = resolverConfig,
+        )
+
+        if (result.isFailure && fallbackBinding == null) {
+            val message = result.exceptionOrNull()?.message?.let {
                 "$it; OS device bind fallback is unavailable because interfaceName is missing"
             } ?: "OS device bind fallback is unavailable because interfaceName is missing"
             return Result.failure(IOException(message))
         }
 
-        // Fallback: keep system DNS semantics from the old second pass, but switch transport
-        // binding to real SO_BINDTODEVICE instead of Android's Network.bindSocket().
-        val fallbackResult = fetchFirstSuccessfulIp(IP_ENDPOINTS) { endpoint ->
-            PublicIpClient.fetchIp(
-                endpoint = endpoint.url,
-                timeoutMs = TIMEOUT_MS,
-                resolverConfig = resolverConfig,
-                binding = fallbackBinding,
-            )
-        }
-
-        if (fallbackResult.isSuccess) return fallbackResult
-        return primaryResult
+        return result
     }
 }

@@ -54,6 +54,34 @@ class IfconfigClientTest {
     }
 
     @Test
+    fun `fetch ip via network combines primary and fallback errors when both bindings fail`() {
+        PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
+            when (binding) {
+                is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
+                is ResolverBinding.OsDeviceBinding -> Result.failure(IOException("device path failed"))
+                null -> Result.failure(IOException("unexpected unbound path"))
+            }
+        }
+
+        val result = kotlinx.coroutines.runBlocking {
+            IfconfigClient.fetchIpViaNetwork(
+                primaryBinding = ResolverBinding.AndroidNetworkBinding(newNetwork(203)),
+                fallbackBinding = ResolverBinding.OsDeviceBinding(
+                    interfaceName = "tun0",
+                    dnsMode = ResolverBinding.DnsMode.SYSTEM,
+                ),
+                resolverConfig = DnsResolverConfig.system(),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals(
+            "Android Network binding failed: primary path failed; SO_BINDTODEVICE(tun0) failed: device path failed",
+            result.exceptionOrNull()?.message,
+        )
+    }
+
+    @Test
     fun `fetch direct ip prefers generic or ipv4 error over trailing ipv6-only failure`() {
         PublicIpClient.fetchIpOverride = { endpoint, _, _, _, _ ->
             when {
