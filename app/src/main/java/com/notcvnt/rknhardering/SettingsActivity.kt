@@ -3,8 +3,10 @@ package com.notcvnt.rknhardering
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
@@ -33,6 +35,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
 
+    private lateinit var scrollView: ScrollView
     private lateinit var switchSplitTunnel: MaterialSwitch
     private lateinit var cardProxyScan: MaterialCardView
     private lateinit var switchProxyScan: MaterialSwitch
@@ -60,17 +63,23 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var chipGroupTheme: ChipGroup
     private lateinit var chipGroupLanguage: ChipGroup
 
+    override fun onSaveInstanceState(outState: Bundle, outPersistentState: PersistableBundle) {
+        outState.putInt(STATE_SCROLL_POSITION, scrollView.verticalScrollbarPosition)
+
+        super.onSaveInstanceState(outState, outPersistentState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+        super.onRestoreInstanceState(savedInstanceState, persistentState)
+
+        scrollView.verticalScrollbarPosition = savedInstanceState?.getInt(STATE_SCROLL_POSITION, 0) ?: 0
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppUiSettings.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_settings)
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
 
         prefs = AppUiSettings.prefs(this)
 
@@ -83,6 +92,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
+        scrollView = findViewById(R.id.scrollView)
         switchSplitTunnel = findViewById(R.id.switchSplitTunnel)
         cardProxyScan = findViewById(R.id.cardProxyScan)
         switchProxyScan = findViewById(R.id.switchProxyScan)
@@ -521,6 +531,8 @@ class SettingsActivity : AppCompatActivity() {
         const val PREF_THEME = "pref_theme"
         const val PREF_LANGUAGE = "pref_language"
         const val EXTRA_REQUEST_PERMISSIONS = "extra_request_permissions"
+
+        private const val STATE_SCROLL_POSITION = "state.SCROLL_POSITION"
 
         fun applyTheme(theme: String) {
             when (theme) {
