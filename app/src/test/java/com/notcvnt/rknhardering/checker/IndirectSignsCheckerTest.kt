@@ -6,6 +6,7 @@ import com.notcvnt.rknhardering.checker.IndirectSignsChecker.DnsClassification
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.InterfaceAddressSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.NetworkSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.RouteSnapshot
+import com.notcvnt.rknhardering.checker.IndirectSignsChecker.TunnelClass
 import com.notcvnt.rknhardering.model.CallTransportLeakResult
 import com.notcvnt.rknhardering.model.CallTransportNetworkPath
 import com.notcvnt.rknhardering.model.CallTransportProbeKind
@@ -18,6 +19,7 @@ import com.notcvnt.rknhardering.probe.LocalSocketInspector
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -287,6 +289,94 @@ class IndirectSignsCheckerTest {
     }
 
     @Test
+    fun `carrier ims ipsec is classified as non vpn and exposes diagnostics`() {
+        val snapshot = snapshot(
+            isActive = true,
+            isVpn = false,
+            interfaceName = "ipsec21",
+            routes = listOf(
+                route("0.0.0.0/0", "ipsec21", isDefault = true),
+                route("198.51.100.0/24", "ipsec21", isDefault = false),
+            ),
+            hasNotVpn = true,
+            hasIms = true,
+            hasMmtel = true,
+            capsString = "Capabilities: IMS&NOT_VPN&MMTEL",
+        )
+
+        assertEquals(TunnelClass.CARRIER_IMS_IPSEC, IndirectSignsChecker.classifyTunnel("ipsec21", snapshot))
+
+        val diagnostics = IndirectSignsChecker.buildIpsecDiagnostics(context, "ipsec21", snapshot)
+        assertEquals(2, diagnostics.size)
+        assertTrue(diagnostics.any { it.description.contains("ipsec21") && it.description.contains("carrier") })
+        assertTrue(diagnostics.any { it.description.contains("NOT_VPN") && it.description.contains("IMS") && it.description.contains("MMTEL") })
+
+        val routing = IndirectSignsChecker.checkRoutingTable(context, listOf(snapshot))
+        assertFalse(routing.detected)
+
+        val dns = IndirectSignsChecker.checkDns(
+            context,
+            listOf(
+                snapshot.copy(dnsServers = listOf("100.64.10.53"), interfaceAddresses = listOf(linkAddress("100.64.10.2", 24))),
+                snapshot(
+                    isActive = false,
+                    isVpn = false,
+                    interfaceName = "rmnet0",
+                    routes = listOf(route("0.0.0.0/0", "rmnet0", isDefault = true)),
+                    dnsServers = listOf("100.64.10.1"),
+                    interfaceAddresses = listOf(linkAddress("100.64.10.9", 24)),
+                ),
+            ),
+        )
+        assertFalse(dns.detected)
+        assertFalse(dns.needsReview)
+    }
+
+    @Test
+    fun `ipsec with transport vpn is classified as confirmed vpn`() {
+        val snapshot = snapshot(
+            isActive = true,
+            isVpn = true,
+            interfaceName = "ipsec21",
+            routes = listOf(route("0.0.0.0/0", "ipsec21", isDefault = true)),
+            hasTransportVpn = true,
+            hasNotVpn = false,
+            capsString = "Capabilities: TRANSPORT_VPN",
+        )
+
+        assertEquals(TunnelClass.CONFIRMED_VPN, IndirectSignsChecker.classifyTunnel("ipsec21", snapshot))
+
+        val routing = IndirectSignsChecker.checkRoutingTable(context, listOf(snapshot))
+        assertTrue(routing.detected)
+        assertTrue(routing.evidence.any { it.source == EvidenceSource.ROUTING && it.detected })
+    }
+
+    @Test
+    fun `ipsec without carrier or vpn markers stays unknown`() {
+        val snapshot = snapshot(
+            isActive = true,
+            isVpn = false,
+            interfaceName = "ipsec21",
+            routes = listOf(route("0.0.0.0/0", "ipsec21", isDefault = true)),
+            hasNotVpn = true,
+            capsString = "Capabilities: NOT_VPN",
+        )
+
+        assertEquals(TunnelClass.UNKNOWN_IPSEC, IndirectSignsChecker.classifyTunnel("ipsec21", snapshot))
+
+        val diagnostics = IndirectSignsChecker.buildIpsecDiagnostics(context, "ipsec21", snapshot)
+        assertTrue(diagnostics.any { it.description.contains("ipsec21") })
+        assertTrue(diagnostics.any { it.description.contains("unknown") || it.description.contains("не удалось") })
+
+        val routing = IndirectSignsChecker.checkRoutingTable(context, listOf(snapshot))
+        assertFalse(routing.detected)
+        assertNotEquals(
+            TunnelClass.CONFIRMED_VPN,
+            IndirectSignsChecker.classifyTunnel("ipsec21", snapshot),
+        )
+    }
+
+    @Test
     fun `default route on non standard interface is detected`() {
         val evaluation = IndirectSignsChecker.checkRoutingTable(
             context,
@@ -435,6 +525,12 @@ class IndirectSignsCheckerTest {
         isVpn: Boolean,
         interfaceName: String?,
         routes: List<RouteSnapshot>,
+        hasTransportVpn: Boolean = isVpn,
+        hasNotVpn: Boolean = !isVpn,
+        hasIms: Boolean = false,
+        hasEims: Boolean = false,
+        hasMmtel: Boolean = false,
+        capsString: String = if (hasNotVpn) "Capabilities: NOT_VPN" else "Capabilities:",
         dnsServers: List<String> = emptyList(),
         interfaceAddresses: List<InterfaceAddressSnapshot> = emptyList(),
     ): NetworkSnapshot {
@@ -443,6 +539,12 @@ class IndirectSignsCheckerTest {
             isActive = isActive,
             isVpn = isVpn,
             interfaceName = interfaceName,
+            hasTransportVpn = hasTransportVpn,
+            hasNotVpn = hasNotVpn,
+            hasIms = hasIms,
+            hasEims = hasEims,
+            hasMmtel = hasMmtel,
+            capsString = capsString,
             routes = routes,
             dnsServers = dnsServers,
             interfaceAddresses = interfaceAddresses,

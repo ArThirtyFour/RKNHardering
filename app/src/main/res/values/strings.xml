@@ -269,13 +269,18 @@
     <string name="checker_indirect_capability_not_vpn">Capability NOT_VPN: %1$s</string>
     <string name="checker_indirect_present">present</string>
     <string name="checker_indirect_absent_suspicious">absent (suspicious)</string>
-    <string name="checker_indirect_no_vpn_interfaces">VPN interfaces (tun/tap/wg/ppp/ipsec): none detected</string>
+    <string name="checker_indirect_no_vpn_interfaces">VPN interfaces (tun/tap/wg/ppp or confirmed IPsec): none detected</string>
     <string name="checker_indirect_vpn_interface_found">VPN interface detected: %1$s</string>
     <string name="checker_indirect_interface_error">Error while checking interfaces: %1$s</string>
     <string name="checker_indirect_mtu_anomaly">MTU anomaly: %1$s MTU=%2$d (&lt; 1500)</string>
     <string name="checker_indirect_mtu_anomaly_nonstandard">MTU anomaly: non-standard interface %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU: no anomalies detected</string>
     <string name="checker_indirect_mtu_error">Error while checking MTU: %1$s</string>
+    <string name="checker_indirect_ipsec_classification">IPsec network %1$s: %2$s</string>
+    <string name="checker_indirect_ipsec_capabilities">Capabilities %1$s: NOT_VPN=%2$s, TRANSPORT_VPN=%3$s, IMS=%4$s, EIMS=%5$s, MMTEL=%6$s</string>
+    <string name="checker_indirect_ipsec_class_confirmed_vpn">confirmed VPN tunnel</string>
+    <string name="checker_indirect_ipsec_class_carrier_ims">carrier IMS / not a VPN</string>
+    <string name="checker_indirect_ipsec_class_unknown">unknown IPsec tunnel</string>
     <string name="checker_indirect_default_route_standard">Default route: %1$s (standard)</string>
     <string name="checker_indirect_default_route_nonstandard">Default route via a non-standard interface: %1$s</string>
     <string name="checker_indirect_dedicated_routes">Dedicated routes via VPN/non-standard interface: %1$s</string>

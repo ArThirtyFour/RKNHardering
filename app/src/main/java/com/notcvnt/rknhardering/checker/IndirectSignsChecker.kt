@@ -2,6 +2,7 @@ package com.notcvnt.rknhardering.checker
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import com.notcvnt.rknhardering.LocalProxyOwnerFormatter
 import com.notcvnt.rknhardering.R
@@ -57,10 +58,23 @@ object IndirectSignsChecker {
         val isActive: Boolean,
         val isVpn: Boolean,
         val interfaceName: String?,
+        val hasTransportVpn: Boolean,
+        val hasNotVpn: Boolean,
+        val hasIms: Boolean,
+        val hasEims: Boolean,
+        val hasMmtel: Boolean,
+        val capsString: String,
         val routes: List<RouteSnapshot>,
         val dnsServers: List<String>,
         val interfaceAddresses: List<InterfaceAddressSnapshot>,
     )
+
+    internal enum class TunnelClass {
+        CONFIRMED_VPN,
+        CARRIER_IMS_IPSEC,
+        UNKNOWN_IPSEC,
+        NORMAL,
+    }
 
     internal data class RoutingEvaluation(
         val findings: List<Finding>,
@@ -95,8 +109,9 @@ object IndirectSignsChecker {
         Regex("^tap\\d+"),
         Regex("^wg\\d+"),
         Regex("^ppp\\d+"),
-        Regex("^ipsec.*"),
     )
+
+    private val IPSEC_INTERFACE_PATTERN = Regex("^ipsec.*")
 
     private val STANDARD_INTERFACES = listOf(
         Regex("^wlan.*"),
@@ -145,13 +160,22 @@ object IndirectSignsChecker {
         var needsReview = false
 
         val networkSnapshots = collectNetworkSnapshots(context)
+        val snapshotByInterface = buildSnapshotIndex(networkSnapshots)
+
+        findings += networkSnapshots
+            .mapNotNull { snapshot ->
+                snapshot.interfaceName
+                    ?.takeIf(::isIpsecInterface)
+                    ?.let { buildIpsecDiagnostics(context, it, snapshot) }
+            }
+            .flatten()
 
         val notVpnOutcome = checkNotVpnCapability(context, findings, evidence)
         detected = detected || notVpnOutcome.detected
         needsReview = needsReview || notVpnOutcome.needsReview
 
-        detected = checkNetworkInterfaces(context, findings, evidence) || detected
-        detected = checkMtu(context, findings, evidence) || detected
+        detected = checkNetworkInterfaces(context, findings, evidence, snapshotByInterface) || detected
+        detected = checkMtu(context, findings, evidence, snapshotByInterface) || detected
 
         val routingOutcome = checkRoutingTable(context, networkSnapshots)
         findings += routingOutcome.findings
@@ -232,17 +256,33 @@ object IndirectSignsChecker {
                 val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
                 val linkProperties = cm.getLinkProperties(network) ?: return@mapNotNull null
                 if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    linkProperties.interfaceName.isNullOrBlank() &&
+                    linkProperties.linkAddresses.isEmpty() &&
                     linkProperties.routes.isEmpty() &&
                     linkProperties.dnsServers.isEmpty()
                 ) {
                     return@mapNotNull null
                 }
 
+                val capsString = caps.toString()
+                val hasTransportVpn = caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                val hasNotVpn = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                val hasIms = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                val hasEims = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                val hasMmtel = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
+
                 NetworkSnapshot(
                     label = network.toString(),
                     isActive = network == activeNetwork,
-                    isVpn = caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN),
+                    isVpn = hasTransportVpn,
                     interfaceName = NetworkInterfaceNameNormalizer.canonicalName(linkProperties.interfaceName),
+                    hasTransportVpn = hasTransportVpn,
+                    hasNotVpn = hasNotVpn,
+                    hasIms = hasIms,
+                    hasEims = hasEims,
+                    hasMmtel = hasMmtel,
+                    capsString = capsString,
                     routes = linkProperties.routes.map { route ->
                         RouteSnapshot(
                             destination = route.destination?.toString()
@@ -317,11 +357,12 @@ object IndirectSignsChecker {
         context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
+        snapshotByInterface: Map<String, NetworkSnapshot>,
     ): Boolean {
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList()
             val vpnInterfaces = interfaces.filter { iface ->
-                iface.isUp && isVpnInterface(iface.name)
+                iface.isUp && classifyTunnel(iface.name, snapshotByInterface.snapshotFor(iface.name)) == TunnelClass.CONFIRMED_VPN
             }
 
             if (vpnInterfaces.isEmpty()) {
@@ -358,14 +399,14 @@ object IndirectSignsChecker {
         context: Context,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
+        snapshotByInterface: Map<String, NetworkSnapshot>,
     ): Boolean {
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList()
             var detected = false
             for (iface in interfaces) {
                 if (!iface.isUp) continue
-                val isVpnLike = isVpnInterface(iface.name)
-                if (!isVpnLike) continue
+                if (classifyTunnel(iface.name, snapshotByInterface.snapshotFor(iface.name)) != TunnelClass.CONFIRMED_VPN) continue
 
                 val mtu = iface.mtu
                 if (mtu !in 1..1499) continue
@@ -393,35 +434,6 @@ object IndirectSignsChecker {
                 detected = true
             }
 
-            val activeInterfaces = interfaces.filter { it.isUp && it.mtu in 1..1499 }
-            val nonVpnLowMtu = activeInterfaces.filter { iface ->
-                !isVpnInterface(iface.name) &&
-                    !isStandardInterface(iface.name)
-            }
-            for (iface in nonVpnLowMtu) {
-                findings.add(
-                    Finding(
-                        description = context.getString(
-                            R.string.checker_indirect_mtu_anomaly_nonstandard,
-                            iface.name,
-                            iface.mtu,
-                        ),
-                        detected = true,
-                        source = EvidenceSource.NETWORK_INTERFACE,
-                        confidence = EvidenceConfidence.LOW,
-                    ),
-                )
-                evidence.add(
-                    EvidenceItem(
-                        source = EvidenceSource.NETWORK_INTERFACE,
-                        detected = true,
-                        confidence = EvidenceConfidence.LOW,
-                        description = "Non-standard interface ${iface.name} uses low MTU ${iface.mtu}",
-                    ),
-                )
-                detected = true
-            }
-
             if (!detected) {
                 findings.add(Finding(context.getString(R.string.checker_indirect_mtu_no_anomalies)))
             }
@@ -437,18 +449,26 @@ object IndirectSignsChecker {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
         var detected = false
+        val snapshotByInterface = buildSnapshotIndex(networkSnapshots)
 
         val snapshotsWithRoutes = networkSnapshots.filter { it.routes.isNotEmpty() }
         for (snapshot in snapshotsWithRoutes) {
+            val snapshotClass = classifyTunnel(snapshot.interfaceName, snapshot)
             val defaultRoutes = snapshot.routes.filter { it.isDefault }
             for (route in defaultRoutes) {
                 val iface = route.interfaceName
-                if (iface != null && isStandardInterface(iface) && !snapshot.isVpn) {
-                    findings.add(
-                        Finding(
-                            context.getString(R.string.checker_indirect_default_route_standard, iface),
-                        ),
-                    )
+                val routeClass = classifyTunnel(iface, snapshotByInterface.snapshotFor(iface))
+                if ((iface != null && isStandardInterface(iface) && snapshotClass != TunnelClass.CONFIRMED_VPN) ||
+                    routeClass == TunnelClass.CARRIER_IMS_IPSEC ||
+                    routeClass == TunnelClass.UNKNOWN_IPSEC
+                ) {
+                    if (iface != null && isStandardInterface(iface)) {
+                        findings.add(
+                            Finding(
+                                context.getString(R.string.checker_indirect_default_route_standard, iface),
+                            ),
+                        )
+                    }
                     continue
                 }
 
@@ -475,7 +495,9 @@ object IndirectSignsChecker {
             }
 
             val dedicatedRoutes = snapshot.routes.filter { route ->
-                !route.isDefault && route.interfaceName != null && isVpnOrNonStandardInterface(route.interfaceName)
+                !route.isDefault &&
+                    route.interfaceName != null &&
+                    isSuspiciousRoutingInterface(route.interfaceName, snapshotByInterface)
             }
             if (dedicatedRoutes.isNotEmpty()) {
                 val routePreview = dedicatedRoutes.take(3).joinToString { route ->
@@ -512,6 +534,9 @@ object IndirectSignsChecker {
                     )
                     continue
                 }
+                if (classifyTunnel(iface, snapshotByInterface.snapshotFor(iface)) != TunnelClass.NORMAL && !isSuspiciousRoutingInterface(iface, snapshotByInterface)) {
+                    continue
+                }
 
                 findings.add(
                     Finding(
@@ -537,11 +562,13 @@ object IndirectSignsChecker {
         }
 
         val hasVpnRoutes = snapshotsWithRoutes.any { snapshot ->
-            (snapshot.isVpn || isVpnOrNonStandardInterface(snapshot.interfaceName)) &&
-                snapshot.routes.any { !it.isDefault }
+            snapshot.routes.any { route ->
+                !route.isDefault &&
+                    isSuspiciousRoutingInterface(route.interfaceName ?: snapshot.interfaceName, snapshotByInterface)
+            }
         }
         val hasUnderlyingDefaultRoute = snapshotsWithRoutes.any { snapshot ->
-            !snapshot.isVpn &&
+            classifyTunnel(snapshot.interfaceName, snapshot) != TunnelClass.CONFIRMED_VPN &&
                 snapshot.routes.any { route ->
                     route.isDefault && route.interfaceName != null && isStandardInterface(route.interfaceName)
                 }
@@ -587,6 +614,7 @@ object IndirectSignsChecker {
         val evidence = mutableListOf<EvidenceItem>()
         var detected = false
         var needsReview = false
+        val snapshotByInterface = buildSnapshotIndex(networkSnapshots)
 
         val activeSnapshot = networkSnapshots.firstOrNull { it.isActive }
         if (activeSnapshot == null) {
@@ -599,10 +627,15 @@ object IndirectSignsChecker {
             return DnsEvaluation(findings, evidence, detected = false, needsReview = false)
         }
 
-        val activeVpn = isDnsVpnSnapshot(activeSnapshot)
+        val activeVpn = isDnsVpnSnapshot(activeSnapshot, snapshotByInterface)
         val activeRouteInterface = activeSnapshot.routes.firstOrNull { it.isDefault }?.interfaceName ?: activeSnapshot.interfaceName
-        val routeViaVpnInterface = isVpnInterface(activeRouteInterface)
-        val underlyingSnapshots = networkSnapshots.filterNot(::isDnsVpnSnapshot)
+        val routeViaVpnInterface = classifyTunnel(
+            activeRouteInterface,
+            snapshotByInterface.snapshotFor(activeRouteInterface),
+        ) == TunnelClass.CONFIRMED_VPN
+        val underlyingSnapshots = networkSnapshots.filterNot { snapshot ->
+            isDnsVpnSnapshot(snapshot, snapshotByInterface)
+        }
         val underlyingDns = underlyingSnapshots.flatMapTo(linkedSetOf()) { it.dnsServers }
 
         for (dns in activeSnapshot.dnsServers.distinct()) {
@@ -862,20 +895,91 @@ object IndirectSignsChecker {
     }
 
     private fun isVpnInterface(name: String?): Boolean {
-        if (name.isNullOrBlank()) return false
-        return VPN_INTERFACE_PATTERNS.any { it.matches(name) }
+        val canonicalName = NetworkInterfaceNameNormalizer.canonicalName(name)
+        if (canonicalName.isNullOrBlank()) return false
+        return VPN_INTERFACE_PATTERNS.any { it.matches(canonicalName) }
     }
 
-    private fun isVpnOrNonStandardInterface(name: String?): Boolean {
-        if (name.isNullOrBlank()) return false
-        return !isStandardInterface(name)
+    private fun isIpsecInterface(name: String?): Boolean {
+        val canonicalName = NetworkInterfaceNameNormalizer.canonicalName(name)
+        if (canonicalName.isNullOrBlank()) return false
+        return IPSEC_INTERFACE_PATTERN.matches(canonicalName)
     }
 
-    private fun isDnsVpnSnapshot(snapshot: NetworkSnapshot): Boolean {
+    internal fun classifyTunnel(interfaceName: String?, snapshot: NetworkSnapshot?): TunnelClass {
+        if (snapshot?.hasTransportVpn == true) return TunnelClass.CONFIRMED_VPN
+
+        val canonicalName = NetworkInterfaceNameNormalizer.canonicalName(interfaceName)
+        if (canonicalName.isNullOrBlank()) return TunnelClass.NORMAL
+        if (isVpnInterface(canonicalName)) return TunnelClass.CONFIRMED_VPN
+        if (!isIpsecInterface(canonicalName)) return TunnelClass.NORMAL
+        if (snapshot == null) return TunnelClass.UNKNOWN_IPSEC
+
+        val hasVpnMarkers = !snapshot.hasNotVpn ||
+            snapshot.capsString.contains("IS_VPN") ||
+            snapshot.capsString.contains("VpnTransportInfo")
+        val hasCarrierImsMarkers = snapshot.hasNotVpn &&
+            !snapshot.hasTransportVpn &&
+            (snapshot.hasIms || snapshot.hasEims || snapshot.hasMmtel)
+
+        return when {
+            hasVpnMarkers -> TunnelClass.CONFIRMED_VPN
+            hasCarrierImsMarkers -> TunnelClass.CARRIER_IMS_IPSEC
+            else -> TunnelClass.UNKNOWN_IPSEC
+        }
+    }
+
+    internal fun buildIpsecDiagnostics(
+        context: Context,
+        interfaceName: String,
+        snapshot: NetworkSnapshot,
+    ): List<Finding> {
+        val classificationText = when (classifyTunnel(interfaceName, snapshot)) {
+            TunnelClass.CONFIRMED_VPN -> context.getString(R.string.checker_indirect_ipsec_class_confirmed_vpn)
+            TunnelClass.CARRIER_IMS_IPSEC -> context.getString(R.string.checker_indirect_ipsec_class_carrier_ims)
+            TunnelClass.UNKNOWN_IPSEC -> context.getString(R.string.checker_indirect_ipsec_class_unknown)
+            TunnelClass.NORMAL -> return emptyList()
+        }
+        return listOf(
+            Finding(
+                description = context.getString(
+                    R.string.checker_indirect_ipsec_classification,
+                    interfaceName,
+                    classificationText,
+                ),
+            ),
+            Finding(
+                description = context.getString(
+                    R.string.checker_indirect_ipsec_capabilities,
+                    interfaceName,
+                    yesNo(context, snapshot.hasNotVpn),
+                    yesNo(context, snapshot.hasTransportVpn),
+                    yesNo(context, snapshot.hasIms),
+                    yesNo(context, snapshot.hasEims),
+                    yesNo(context, snapshot.hasMmtel),
+                ),
+            ),
+        )
+    }
+
+    private fun isSuspiciousRoutingInterface(
+        name: String?,
+        snapshotByInterface: Map<String, NetworkSnapshot>,
+    ): Boolean {
+        return when (classifyTunnel(name, snapshotByInterface.snapshotFor(name))) {
+            TunnelClass.CONFIRMED_VPN -> true
+            TunnelClass.CARRIER_IMS_IPSEC, TunnelClass.UNKNOWN_IPSEC -> false
+            TunnelClass.NORMAL -> !isStandardInterface(name)
+        }
+    }
+
+    private fun isDnsVpnSnapshot(
+        snapshot: NetworkSnapshot,
+        snapshotByInterface: Map<String, NetworkSnapshot>,
+    ): Boolean {
         val defaultRouteInterface = snapshot.routes.firstOrNull { it.isDefault }?.interfaceName
-        return snapshot.isVpn ||
-            isVpnInterface(snapshot.interfaceName) ||
-            isVpnInterface(defaultRouteInterface)
+        return classifyTunnel(snapshot.interfaceName, snapshot) == TunnelClass.CONFIRMED_VPN ||
+            classifyTunnel(defaultRouteInterface, snapshotByInterface.snapshotFor(defaultRouteInterface)) == TunnelClass.CONFIRMED_VPN
     }
 
     private fun isLoopbackOrAnyAddress(host: String): Boolean {
@@ -1132,5 +1236,23 @@ object IndirectSignsChecker {
         if (parsedAddress != null && isPrivateDnsAddress(parsedAddress)) return DnsClassification.PRIVATE_NETWORK
         if (normalized in KNOWN_PUBLIC_RESOLVERS) return DnsClassification.KNOWN_PUBLIC_RESOLVER
         return DnsClassification.OTHER_PUBLIC
+    }
+
+    private fun buildSnapshotIndex(networkSnapshots: List<NetworkSnapshot>): Map<String, NetworkSnapshot> {
+        val snapshotsByInterface = LinkedHashMap<String, NetworkSnapshot>()
+        for (snapshot in networkSnapshots) {
+            val interfaceName = snapshot.interfaceName ?: continue
+            snapshotsByInterface.putIfAbsent(interfaceName, snapshot)
+        }
+        return snapshotsByInterface
+    }
+
+    private fun Map<String, NetworkSnapshot>.snapshotFor(name: String?): NetworkSnapshot? {
+        val canonicalName = NetworkInterfaceNameNormalizer.canonicalName(name) ?: return null
+        return this[canonicalName]
+    }
+
+    private fun yesNo(context: Context, value: Boolean): String {
+        return context.getString(if (value) R.string.checker_yes else R.string.checker_no)
     }
 }

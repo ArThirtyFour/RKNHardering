@@ -267,13 +267,18 @@
     <string name="checker_indirect_capability_not_vpn">Capability NOT_VPN: %1$s</string>
     <string name="checker_indirect_present">присутствует</string>
     <string name="checker_indirect_absent_suspicious">отсутствует (подозрительно)</string>
-    <string name="checker_indirect_no_vpn_interfaces">VPN-интерфейсы (tun/tap/wg/ppp/ipsec): не обнаружены</string>
+    <string name="checker_indirect_no_vpn_interfaces">VPN-интерфейсы (tun/tap/wg/ppp или подтверждённый IPsec): не обнаружены</string>
     <string name="checker_indirect_vpn_interface_found">VPN-интерфейс обнаружен: %1$s</string>
     <string name="checker_indirect_interface_error">Ошибка при проверке интерфейсов: %1$s</string>
     <string name="checker_indirect_mtu_anomaly">MTU аномалия: %1$s MTU=%2$d (&lt; 1500)</string>
     <string name="checker_indirect_mtu_anomaly_nonstandard">MTU аномалия: нестандартный интерфейс %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU: аномалий не обнаружено</string>
     <string name="checker_indirect_mtu_error">Ошибка при проверке MTU: %1$s</string>
+    <string name="checker_indirect_ipsec_classification">IPsec-сеть %1$s: %2$s</string>
+    <string name="checker_indirect_ipsec_capabilities">Capabilities %1$s: NOT_VPN=%2$s, TRANSPORT_VPN=%3$s, IMS=%4$s, EIMS=%5$s, MMTEL=%6$s</string>
+    <string name="checker_indirect_ipsec_class_confirmed_vpn">подтверждённый VPN-туннель</string>
+    <string name="checker_indirect_ipsec_class_carrier_ims">carrier IMS / не VPN</string>
+    <string name="checker_indirect_ipsec_class_unknown">неоднозначный IPsec-туннель</string>
     <string name="checker_indirect_default_route_standard">Маршрут по умолчанию: %1$s (стандартный)</string>
     <string name="checker_indirect_default_route_nonstandard">Маршрут по умолчанию через нестандартный интерфейс: %1$s</string>
     <string name="checker_indirect_dedicated_routes">Выделенные маршруты через VPN/нестандартный интерфейс: %1$s</string>
