@@ -7,10 +7,12 @@ import com.notcvnt.rknhardering.LocalProxyOwnerFormatter
 import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.ActiveVpnApp
 import com.notcvnt.rknhardering.model.CategoryResult
+import com.notcvnt.rknhardering.model.CallTransportLeakResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.network.NetworkInterfaceNameNormalizer
 import com.notcvnt.rknhardering.probe.LocalSocketInspector
 import com.notcvnt.rknhardering.probe.LocalSocketListener
@@ -81,6 +83,13 @@ object IndirectSignsChecker {
         val needsReview: Boolean,
     )
 
+    internal data class CallTransportEvaluation(
+        val results: List<CallTransportLeakResult> = emptyList(),
+        val findings: List<Finding> = emptyList(),
+        val evidence: List<EvidenceItem> = emptyList(),
+        val needsReview: Boolean = false,
+    )
+
     private val VPN_INTERFACE_PATTERNS = listOf(
         Regex("^tun\\d+"),
         Regex("^tap\\d+"),
@@ -122,10 +131,16 @@ object IndirectSignsChecker {
             listOf(80, 443, 1080, 3127, 3128, 4080, 5555, 7000, 7044, 8000, 8080, 8081, 8082, 8888, 9000, 9050, 9051, 9150, 12345)
         ).toSet()
 
-    fun check(context: Context): CategoryResult {
+    suspend fun check(
+        context: Context,
+        networkRequestsEnabled: Boolean = true,
+        callTransportProbeEnabled: Boolean = false,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): CategoryResult {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
         val activeApps = mutableListOf<ActiveVpnApp>()
+        val callTransportLeaks = mutableListOf<CallTransportLeakResult>()
         var detected = false
         var needsReview = false
 
@@ -156,6 +171,17 @@ object IndirectSignsChecker {
         detected = detected || proxyTechnicalOutcome.detected
         needsReview = needsReview || proxyTechnicalOutcome.needsReview
 
+        val callTransportOutcome = checkCallTransportSignals(
+            context = context,
+            networkRequestsEnabled = networkRequestsEnabled,
+            callTransportProbeEnabled = callTransportProbeEnabled,
+            resolverConfig = resolverConfig,
+        )
+        findings += callTransportOutcome.findings
+        evidence += callTransportOutcome.evidence
+        callTransportLeaks += callTransportOutcome.results
+        needsReview = needsReview || callTransportOutcome.needsReview
+
         val dumpsysVpnOutcome = checkDumpsysVpn(context, findings, evidence, activeApps)
         detected = detected || dumpsysVpnOutcome.detected
         needsReview = needsReview || dumpsysVpnOutcome.needsReview
@@ -171,6 +197,30 @@ object IndirectSignsChecker {
             needsReview = needsReview,
             evidence = evidence,
             activeApps = activeApps.distinctBy { Triple(it.packageName, it.serviceName, it.source) },
+            callTransportLeaks = callTransportLeaks,
+        )
+    }
+
+    private suspend fun checkCallTransportSignals(
+        context: Context,
+        networkRequestsEnabled: Boolean,
+        callTransportProbeEnabled: Boolean,
+        resolverConfig: DnsResolverConfig,
+    ): CallTransportEvaluation {
+        if (!networkRequestsEnabled || !callTransportProbeEnabled) {
+            return CallTransportEvaluation()
+        }
+
+        val evaluation = CallTransportChecker.check(
+            context = context,
+            resolverConfig = resolverConfig,
+            callTransportEnabled = true,
+        )
+        return CallTransportEvaluation(
+            results = evaluation.results,
+            findings = evaluation.findings,
+            evidence = evaluation.evidence,
+            needsReview = evaluation.needsReview,
         )
     }
 

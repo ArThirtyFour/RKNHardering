@@ -115,7 +115,6 @@
 
     <string name="main_ipv6_error_ignored">IPv6-ошибка проигнорирована: </string>
 
-    <string name="settings_port_range_preview">Будут сканироваться localhost-порты для proxy и Xray API: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_proxy_xray">Будут сканироваться localhost-порты для proxy и Xray API: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_proxy_only">Будут сканироваться localhost-порты для proxy: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_xray_only">Будут сканироваться localhost-порты для Xray API: %1$s (%2$s)</string>
@@ -315,8 +314,6 @@
     <string name="checker_bypass_progress_port_detail">Порт %1$d (%2$d%%)</string>
     <string name="checker_bypass_progress_xray_detail">Поиск gRPC API на localhost&#8230;</string>
     <string name="checker_bypass_progress_underlying_detail">Проверка доступа к non-VPN сети&#8230;</string>
-    <string name="checker_bypass_progress_call_transport_phase">Call transport</string>
-    <string name="checker_bypass_progress_call_transport_detail">Проверяем встроенные Telegram-цели и experimental цели call transport&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">Проверка IP</string>
     <string name="checker_bypass_progress_ip_detail">Получение прямого IP и IP через прокси&#8230;</string>
     <string name="checker_bypass_progress_mtproto_detail">Проверка Telegram DC через прокси&#8230;</string>

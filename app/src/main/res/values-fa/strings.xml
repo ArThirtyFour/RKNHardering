@@ -10,8 +10,13 @@
     <string name="settings_section_about">درباره</string>
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">اسکن پورت زمان زیادی می‌گیرد</string>
+    <string name="settings_proxy_scan_title">اسکن پراکسی محلی</string>
+    <string name="settings_proxy_scan_desc">localhost را برای پورت‌های باز SOCKS5/HTTP proxy اسکن می‌کند.</string>
+    <string name="settings_xray_api_scan_title">اسکن API gRPC Xray</string>
+    <string name="settings_xray_api_scan_desc">localhost را برای پورت‌های آشکار API gRPC Xray اسکن می‌کند.</string>
     <string name="settings_port_range">بازه پورت</string>
     <string name="settings_port_range_desc">برای اسکن Split tunnel</string>
+    <string name="settings_port_range_desc_scans">برای اسکن‌های فعال proxy محلی و Xray استفاده می‌شود.</string>
     <string name="settings_port_popular">رایج</string>
     <string name="settings_port_extended">گسترده</string>
     <string name="settings_port_full">کامل</string>
@@ -110,7 +115,10 @@
 
     <string name="main_ipv6_error_ignored">خطای IPv6 نادیده گرفته شد: </string>
 
-    <string name="settings_port_range_preview">پورت‌های لوکال‌هاست برای اسکن proxy و Xray API: %1$s (%2$s)</string>
+    <string name="settings_port_range_preview_proxy_xray">پورت‌های لوکال‌هاست برای اسکن proxy و API Xray: %1$s (%2$s)</string>
+    <string name="settings_port_range_preview_proxy_only">پورت‌های لوکال‌هاست برای اسکن proxy: %1$s (%2$s)</string>
+    <string name="settings_port_range_preview_xray_only">پورت‌های لوکال‌هاست برای اسکن API Xray: %1$s (%2$s)</string>
+    <string name="settings_port_range_preview_disabled">اسکن‌های proxy محلی و Xray غیرفعال هستند.</string>
     <plurals name="settings_port_word">
         <item quantity="one">%1$s پورت</item>
         <item quantity="other">%1$s پورت</item>
@@ -292,8 +300,6 @@
     <string name="checker_bypass_progress_port_detail">پورت %1$d (%2$d%%)</string>
     <string name="checker_bypass_progress_xray_detail">در حال جست‌وجوی gRPC API روی localhost&#8230;</string>
     <string name="checker_bypass_progress_underlying_detail">در حال بررسی دسترسی به شبکه غیر VPN&#8230;</string>
-    <string name="checker_bypass_progress_call_transport_phase">Call transport</string>
-    <string name="checker_bypass_progress_call_transport_detail">در حال بررسی هدف‌های داخلی Telegram و هدف‌های experimental مربوط به call transport&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">بررسی IP</string>
     <string name="checker_bypass_progress_ip_detail">در حال به‌دست‌آوردن IP مستقیم و IP از طریق proxy&#8230;</string>
     <string name="checker_bypass_progress_mtproto_detail">در حال بررسی Telegram DC از طریق proxy&#8230;</string>

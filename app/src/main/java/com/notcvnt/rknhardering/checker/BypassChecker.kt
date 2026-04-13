@@ -4,16 +4,11 @@ import android.content.Context
 import com.notcvnt.rknhardering.LocalProxyOwnerFormatter
 import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.BypassResult
-import com.notcvnt.rknhardering.model.CallTransportLeakResult
-import com.notcvnt.rknhardering.model.CallTransportNetworkPath
-import com.notcvnt.rknhardering.model.CallTransportService
-import com.notcvnt.rknhardering.model.CallTransportStatus
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.LocalProxyOwner
-import com.notcvnt.rknhardering.probe.CallTransportLeakProber
 import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.probe.IfconfigClient
 import com.notcvnt.rknhardering.probe.LocalSocketInspector
@@ -63,7 +58,6 @@ object BypassChecker {
         BYPASS,
         XRAY_API,
         UNDERLYING_NETWORK,
-        CALL_TRANSPORT,
     }
 
     data class Progress(
@@ -76,7 +70,8 @@ object BypassChecker {
         context: Context,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         splitTunnelEnabled: Boolean = true,
-        callTransportProbeEnabled: Boolean = false,
+        proxyScanEnabled: Boolean = true,
+        xrayApiScanEnabled: Boolean = true,
         portRange: String = "full",
         portRangeStart: Int = 1024,
         portRangeEnd: Int = 65535,
@@ -86,26 +81,35 @@ object BypassChecker {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val scanPlan = PortScanPlanner.buildExecutionPlan(
-            portRange = portRange,
-            portRangeStart = portRangeStart,
-            portRangeEnd = portRangeEnd,
-        )
-
-        val scanner = ProxyScanner(
-            popularPorts = scanPlan.popularPorts,
-            scanRange = scanPlan.scanRange,
-        )
-        val xrayScanner = when (scanPlan.mode) {
-            ScanMode.POPULAR_ONLY -> XrayApiScanner(
-                scanPorts = XrayApiScanner.DEFAULT_POPULAR_PORTS,
+        val localScanEnabled = proxyScanEnabled || xrayApiScanEnabled
+        val scanPlan = if (splitTunnelEnabled && localScanEnabled) {
+            PortScanPlanner.buildExecutionPlan(
+                portRange = portRange,
+                portRangeStart = portRangeStart,
+                portRangeEnd = portRangeEnd,
             )
-            else -> XrayApiScanner(
-                scanRange = scanPlan.scanRange,
-            )
+        } else {
+            null
         }
 
-        val proxyDeferred = if (splitTunnelEnabled) {
+        val scanner = scanPlan?.let {
+            ProxyScanner(
+                popularPorts = it.popularPorts,
+                scanRange = it.scanRange,
+            )
+        }
+        val xrayScanner = scanPlan?.let {
+            when (it.mode) {
+                ScanMode.POPULAR_ONLY -> XrayApiScanner(
+                    scanPorts = XrayApiScanner.DEFAULT_POPULAR_PORTS,
+                )
+                else -> XrayApiScanner(
+                    scanRange = it.scanRange,
+                )
+            }
+        }
+
+        val proxyDeferred = if (splitTunnelEnabled && proxyScanEnabled && scanPlan != null && scanner != null) {
             async {
                 onProgress?.invoke(
                     Progress(
@@ -162,7 +166,7 @@ object BypassChecker {
             null
         }
 
-        val xrayDeferred = if (splitTunnelEnabled) {
+        val xrayDeferred = if (splitTunnelEnabled && xrayApiScanEnabled && xrayScanner != null) {
             async {
                 onProgress?.invoke(
                     Progress(
@@ -201,33 +205,6 @@ object BypassChecker {
             null
         }
 
-        val callTransportDeferred = if (callTransportProbeEnabled) {
-            async {
-                onProgress?.invoke(
-                    Progress(
-                        line = ProgressLine.CALL_TRANSPORT,
-                        phase = context.getString(R.string.checker_bypass_progress_call_transport_phase),
-                        detail = context.getString(R.string.checker_bypass_progress_call_transport_detail),
-                    ),
-                )
-                CallTransportLeakProber.probeDirect(
-                    context = context,
-                    resolverConfig = resolverConfig,
-                    onProgress = { service, detail ->
-                        onProgress?.invoke(
-                            Progress(
-                                line = ProgressLine.CALL_TRANSPORT,
-                                phase = service,
-                                detail = detail,
-                            ),
-                        )
-                    },
-                )
-            }
-        } else {
-            null
-        }
-
         val proxyEndpoint = proxyDeferred?.await()
         val xrayApiScanResult = xrayDeferred?.await()
         val underlyingResult = underlyingDeferred?.await() ?: UnderlyingNetworkProber.ProbeResult(
@@ -235,11 +212,11 @@ object BypassChecker {
             underlyingReachable = false,
         )
         val proxyOwnerMatch = proxyEndpoint?.let { resolveProxyOwner(context, it) }
-        val callTransportLeaks = mutableListOf<CallTransportLeakResult>()
-        callTransportDeferred?.await()?.let(callTransportLeaks::addAll)
 
-        if (splitTunnelEnabled) {
+        if (splitTunnelEnabled && proxyScanEnabled) {
             reportProxyResult(context, proxyEndpoint, proxyOwnerMatch, findings, evidence)
+        }
+        if (splitTunnelEnabled && xrayApiScanEnabled) {
             reportXrayApiResult(context, xrayApiScanResult, findings, evidence)
         }
         val underlyingEvaluation = if (splitTunnelEnabled) {
@@ -247,7 +224,6 @@ object BypassChecker {
         } else {
             UnderlyingEvaluation(detected = false, needsReview = false)
         }
-        reportCallTransportResults(context, callTransportLeaks, findings, evidence)
 
         var directIp: String? = null
         var proxyIp: String? = null
@@ -335,22 +311,10 @@ object BypassChecker {
             }
         }
 
-        if (callTransportProbeEnabled && proxyEndpoint?.type == ProxyType.SOCKS5) {
-            CallTransportLeakProber.probeProxyAssistedTelegram(
-                context = context,
-                proxyEndpoint = proxyEndpoint,
-                resolverConfig = resolverConfig,
-            ).forEach { proxyLeak ->
-                callTransportLeaks += proxyLeak
-                reportCallTransportResults(context, listOf(proxyLeak), findings, evidence)
-            }
-        }
-
         val detected = confirmedBypass || xrayApiScanResult != null || underlyingEvaluation.detected
         val needsReview = !detected && (
             proxyEndpoint != null ||
-                underlyingEvaluation.needsReview ||
-                callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW }
+                underlyingEvaluation.needsReview
             )
 
         BypassResult(
@@ -361,56 +325,11 @@ object BypassChecker {
             vpnNetworkIp = underlyingResult.vpnIp,
             underlyingIp = underlyingResult.underlyingIp,
             xrayApiScanResult = xrayApiScanResult,
-            callTransportLeaks = callTransportLeaks,
             findings = findings,
             detected = detected,
             needsReview = needsReview,
             evidence = evidence,
         )
-    }
-
-    private fun reportCallTransportResults(
-        context: Context,
-        results: List<CallTransportLeakResult>,
-        findings: MutableList<Finding>,
-        evidence: MutableList<EvidenceItem>,
-    ) {
-        for (result in results) {
-            when (result.status) {
-                CallTransportStatus.NEEDS_REVIEW -> {
-                    findings.add(
-                        Finding(
-                            description = result.summary,
-                            needsReview = true,
-                            source = result.service.toEvidenceSource(),
-                            confidence = result.confidence ?: EvidenceConfidence.MEDIUM,
-                        ),
-                    )
-                    evidence.add(
-                        EvidenceItem(
-                            source = result.service.toEvidenceSource(),
-                            detected = true,
-                            confidence = result.confidence ?: EvidenceConfidence.MEDIUM,
-                            description = result.summary,
-                            family = result.service.name,
-                        ),
-                    )
-                }
-                CallTransportStatus.ERROR -> {
-                    findings.add(
-                        Finding(
-                            description = result.summary,
-                            isError = true,
-                            source = result.service.toEvidenceSource(),
-                            confidence = result.confidence,
-                        ),
-                    )
-                }
-                CallTransportStatus.NO_SIGNAL,
-                CallTransportStatus.UNSUPPORTED,
-                -> Unit
-            }
-        }
     }
 
     private fun reportProxyResult(
@@ -801,12 +720,5 @@ object BypassChecker {
 
     private fun formatHostPort(host: String, port: Int): String {
         return if (host.contains(':')) "[$host]:$port" else "$host:$port"
-    }
-
-    private fun CallTransportService.toEvidenceSource(): EvidenceSource {
-        return when (this) {
-            CallTransportService.TELEGRAM -> EvidenceSource.TELEGRAM_CALL_TRANSPORT
-            CallTransportService.WHATSAPP -> EvidenceSource.WHATSAPP_CALL_TRANSPORT
-        }
     }
 }

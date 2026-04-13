@@ -133,6 +133,7 @@ data class CategoryResult(
     val evidence: List<EvidenceItem> = emptyList(),
     val matchedApps: List<MatchedVpnApp> = emptyList(),
     val activeApps: List<ActiveVpnApp> = emptyList(),
+    val callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
 ) {
     val hasError: Boolean
         get() = findings.any { it.isError }
@@ -152,7 +153,6 @@ data class BypassResult(
     val vpnNetworkIp: String? = null,
     val underlyingIp: String? = null,
     val xrayApiScanResult: XrayApiScanResult?,
-    val callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
     val findings: List<Finding>,
     val detected: Boolean,
     val needsReview: Boolean = false,

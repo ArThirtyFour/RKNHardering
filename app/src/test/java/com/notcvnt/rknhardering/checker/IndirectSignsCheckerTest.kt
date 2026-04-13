@@ -6,12 +6,19 @@ import com.notcvnt.rknhardering.checker.IndirectSignsChecker.DnsClassification
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.InterfaceAddressSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.NetworkSnapshot
 import com.notcvnt.rknhardering.checker.IndirectSignsChecker.RouteSnapshot
+import com.notcvnt.rknhardering.model.CallTransportLeakResult
+import com.notcvnt.rknhardering.model.CallTransportNetworkPath
+import com.notcvnt.rknhardering.model.CallTransportProbeKind
+import com.notcvnt.rknhardering.model.CallTransportService
+import com.notcvnt.rknhardering.model.CallTransportStatus
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceSource
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.probe.LocalSocketInspector
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,6 +27,11 @@ import org.robolectric.RobolectricTestRunner
 class IndirectSignsCheckerTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
+
+    @org.junit.After
+    fun tearDown() {
+        CallTransportChecker.dependenciesOverride = null
+    }
 
     @Test
     fun `classifies loopback dns`() {
@@ -332,6 +344,90 @@ class IndirectSignsCheckerTest {
 
         assertTrue(evaluation.detected)
         assertTrue(evaluation.evidence.any { it.description.contains("Split-tunneling") })
+    }
+
+    @Test
+    fun `call transport disabled leaves indirect result untouched`() = runBlocking {
+        CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
+            loadCatalog = { _, _ -> error("should not be called") },
+        )
+
+        val result = IndirectSignsChecker.check(
+            context = context,
+            networkRequestsEnabled = true,
+            callTransportProbeEnabled = false,
+            resolverConfig = DnsResolverConfig.system(),
+        )
+
+        assertTrue(result.callTransportLeaks.isEmpty())
+    }
+
+    @Test
+    fun `call transport enabled adds needs review signal into indirect result`() = runBlocking {
+        CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
+            loadCatalog = { _, _ ->
+                CallTransportTargetCatalog.Catalog(
+                    telegramTargets = listOf(
+                        CallTransportTargetCatalog.CallTransportTarget(
+                            service = CallTransportService.TELEGRAM,
+                            host = "149.154.167.51",
+                            port = 3478,
+                            experimental = false,
+                            enabled = true,
+                        ),
+                    ),
+                    whatsappTargets = emptyList(),
+                )
+            },
+            loadPaths = {
+                listOf(
+                    CallTransportChecker.PathDescriptor(
+                        path = CallTransportNetworkPath.ACTIVE,
+                        vpnProtected = true,
+                    ),
+                )
+            },
+            stunProbe = { _, _, _ ->
+                Result.success(
+                    com.notcvnt.rknhardering.probe.StunBindingClient.BindingResult(
+                        resolvedIps = listOf("149.154.167.51"),
+                        remoteIp = "149.154.167.51",
+                        remotePort = 3478,
+                        mappedIp = "198.51.100.20",
+                        mappedPort = 40000,
+                    ),
+                )
+            },
+            publicIpFetcher = { _, _ -> Result.success("203.0.113.10") },
+        )
+
+        val result = IndirectSignsChecker.check(
+            context = context,
+            networkRequestsEnabled = true,
+            callTransportProbeEnabled = true,
+            resolverConfig = DnsResolverConfig.system(),
+        )
+
+        assertTrue(result.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW })
+        assertTrue(result.needsReview)
+        assertTrue(result.evidence.any { it.source == EvidenceSource.TELEGRAM_CALL_TRANSPORT && it.detected })
+    }
+
+    @Test
+    fun `call transport error surfaces through category error state`() = runBlocking {
+        CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
+            loadCatalog = { _, _ -> error("catalog failed") },
+        )
+
+        val result = IndirectSignsChecker.check(
+            context = context,
+            networkRequestsEnabled = true,
+            callTransportProbeEnabled = true,
+            resolverConfig = DnsResolverConfig.system(),
+        )
+
+        assertTrue(result.callTransportLeaks.any { it.status == CallTransportStatus.ERROR })
+        assertTrue(result.hasError)
     }
 
     private fun snapshot(

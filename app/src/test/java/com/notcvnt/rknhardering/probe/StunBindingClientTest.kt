@@ -79,6 +79,33 @@ class StunBindingClientTest {
     }
 
     @Test
+    fun `probeWithDatagramExchange parses xor mapped ipv6 address`() {
+        val result = StunBindingClient.probeWithDatagramExchange(
+            host = "stun-test.local",
+            port = 3478,
+            resolvedIps = listOf("2001:db8::10"),
+            exchange = { request ->
+                val transactionId = request.copyOfRange(8, 20)
+                Socks5UdpAssociateClient.UdpDatagram(
+                    sourceHost = "2001:db8::10",
+                    sourcePort = 3478,
+                    payload = buildIpv6StunResponse(
+                        transactionId = transactionId,
+                        mappedIp = "2001:db8::abcd",
+                        mappedPort = 45678,
+                    ),
+                )
+            },
+        ).getOrThrow()
+
+        assertEquals(listOf("2001:db8::10"), result.resolvedIps)
+        assertEquals("2001:db8::10", result.remoteIp)
+        assertEquals(3478, result.remotePort)
+        assertEquals("2001:db8:0:0:0:0:0:abcd", result.mappedIp)
+        assertEquals(45678, result.mappedPort)
+    }
+
+    @Test
     fun `probe uses os device binding for udp socket`() {
         val boundInterfaces = mutableListOf<String>()
         ResolverSocketBinder.bindDatagramToDeviceOverride = { _, interfaceName ->
@@ -192,6 +219,36 @@ class StunBindingClientTest {
                 }
                 output.toByteArray()
             }
+        }
+    }
+
+    private fun buildIpv6StunResponse(
+        transactionId: ByteArray,
+        mappedIp: String,
+        mappedPort: Int,
+    ): ByteArray {
+        val mappedAddressBytes = InetAddress.getByName(mappedIp).address
+        val xorPort = mappedPort xor 0x2112
+        val cookieBytes = byteArrayOf(0x21, 0x12, 0xA4.toByte(), 0x42)
+        val mask = cookieBytes + transactionId
+        val xorAddress = ByteArray(mappedAddressBytes.size) { index ->
+            (mappedAddressBytes[index].toInt() xor mask[index].toInt()).toByte()
+        }
+
+        return ByteArrayOutputStream().use { output ->
+            DataOutputStream(output).use { stream ->
+                stream.writeShort(0x0101)
+                stream.writeShort(24)
+                stream.writeInt(0x2112A442)
+                stream.write(transactionId)
+                stream.writeShort(0x0020)
+                stream.writeShort(20)
+                stream.writeByte(0x00)
+                stream.writeByte(0x02)
+                stream.writeShort(xorPort)
+                stream.write(xorAddress)
+            }
+            output.toByteArray()
         }
     }
 }

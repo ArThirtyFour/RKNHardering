@@ -126,7 +126,6 @@ class MainActivity : AppCompatActivity() {
     private val bypassProgressOrder = listOf(
         BypassChecker.ProgressLine.BYPASS,
         BypassChecker.ProgressLine.XRAY_API,
-        BypassChecker.ProgressLine.CALL_TRANSPORT,
         BypassChecker.ProgressLine.UNDERLYING_NETWORK,
     )
     private val loadingStages = linkedSetOf<RunningStage>()
@@ -402,6 +401,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun runCheck() {
         val splitTunnelEnabled = prefs.getBoolean(SettingsActivity.PREF_SPLIT_TUNNEL_ENABLED, true)
+        val proxyScanEnabled = prefs.getBoolean(SettingsActivity.PREF_PROXY_SCAN_ENABLED, true)
+        val xrayApiScanEnabled = prefs.getBoolean(SettingsActivity.PREF_XRAY_API_SCAN_ENABLED, true)
         val networkRequestsEnabled = prefs.getBoolean(SettingsActivity.PREF_NETWORK_REQUESTS_ENABLED, true)
         val callTransportProbeEnabled = prefs.getBoolean(SettingsActivity.PREF_CALL_TRANSPORT_PROBE_ENABLED, false)
         val privacyMode = prefs.getBoolean(SettingsActivity.PREF_PRIVACY_MODE, false)
@@ -419,6 +420,8 @@ class MainActivity : AppCompatActivity() {
 
         val settings = CheckSettings(
             splitTunnelEnabled = splitTunnelEnabled,
+            proxyScanEnabled = proxyScanEnabled,
+            xrayApiScanEnabled = xrayApiScanEnabled,
             networkRequestsEnabled = networkRequestsEnabled,
             callTransportProbeEnabled = callTransportProbeEnabled,
             resolverConfig = resolverConfig,
@@ -544,7 +547,7 @@ class MainActivity : AppCompatActivity() {
         stages += RunningStage.DIRECT
         stages += RunningStage.INDIRECT
         stages += RunningStage.LOCATION
-        if (settings.splitTunnelEnabled || (settings.networkRequestsEnabled && settings.callTransportProbeEnabled)) {
+        if (settings.splitTunnelEnabled) {
             stages += RunningStage.BYPASS
         }
         return stages

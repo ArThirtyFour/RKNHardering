@@ -266,7 +266,7 @@ class VerdictNarrativeTest {
             context = context,
             result = result(
                 verdict = Verdict.NEEDS_REVIEW,
-                bypass = bypass(
+                indirect = category(
                     needsReview = true,
                     callTransportLeaks = listOf(
                         CallTransportLeakResult(
@@ -279,6 +279,18 @@ class VerdictNarrativeTest {
                             mappedIp = "198.51.100.20",
                             observedPublicIp = "203.0.113.10",
                             summary = "Telegram call transport via active network responded",
+                            confidence = EvidenceConfidence.MEDIUM,
+                        ),
+                        CallTransportLeakResult(
+                            service = CallTransportService.TELEGRAM,
+                            probeKind = CallTransportProbeKind.PROXY_ASSISTED_UDP_STUN,
+                            networkPath = CallTransportNetworkPath.LOCAL_PROXY,
+                            status = CallTransportStatus.NEEDS_REVIEW,
+                            targetHost = "149.154.167.91",
+                            targetPort = 3478,
+                            mappedIp = "198.51.100.30",
+                            observedPublicIp = "203.0.113.20",
+                            summary = "Telegram call transport via local proxy responded",
                             confidence = EvidenceConfidence.MEDIUM,
                         ),
                     ),
@@ -302,6 +314,12 @@ class VerdictNarrativeTest {
             narrative.discoveredRows.any {
                 it.label == context.getString(R.string.narrative_label_call_transport_public_ip) &&
                     it.value == "203.0.113.10"
+            },
+        )
+        assertTrue(
+            narrative.discoveredRows.any {
+                it.label == context.getString(R.string.narrative_label_call_transport_target) &&
+                    it.value == "149.154.167.91:3478"
             },
         )
         assertTrue(
@@ -331,12 +349,14 @@ class VerdictNarrativeTest {
         detected: Boolean = false,
         needsReview: Boolean = false,
         findings: List<Finding> = emptyList(),
+        callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
     ): CategoryResult = CategoryResult(
         name = "test",
         detected = detected,
         findings = findings,
         needsReview = needsReview,
         evidence = emptyList(),
+        callTransportLeaks = callTransportLeaks,
     )
 
     private fun ipComparison(
@@ -390,7 +410,6 @@ class VerdictNarrativeTest {
         vpnNetworkIp: String? = null,
         underlyingIp: String? = null,
         xrayApiScanResult: XrayApiScanResult? = null,
-        callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
         findings: List<Finding> = emptyList(),
         detected: Boolean = false,
         needsReview: Boolean = false,
@@ -403,7 +422,6 @@ class VerdictNarrativeTest {
         vpnNetworkIp = vpnNetworkIp,
         underlyingIp = underlyingIp,
         xrayApiScanResult = xrayApiScanResult,
-        callTransportLeaks = callTransportLeaks,
         findings = findings,
         detected = detected || evidence.any { it.detected },
         needsReview = needsReview,

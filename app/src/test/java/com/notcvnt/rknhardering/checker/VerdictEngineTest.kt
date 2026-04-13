@@ -187,9 +187,7 @@ class VerdictEngineTest {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = category(),
-            indirectSigns = category(),
-            locationSignals = category(),
-            bypassResult = bypass(
+            indirectSigns = category(
                 callTransportLeaks = listOf(
                     CallTransportLeakResult(
                         service = CallTransportService.TELEGRAM,
@@ -205,6 +203,8 @@ class VerdictEngineTest {
                     ),
                 ),
             ),
+            locationSignals = category(),
+            bypassResult = bypass(),
         )
 
         assertEquals(Verdict.NEEDS_REVIEW, verdict)
@@ -215,9 +215,7 @@ class VerdictEngineTest {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = category(),
-            indirectSigns = category(),
-            locationSignals = category(),
-            bypassResult = bypass(
+            indirectSigns = category(
                 callTransportLeaks = listOf(
                     CallTransportLeakResult(
                         service = CallTransportService.TELEGRAM,
@@ -233,6 +231,8 @@ class VerdictEngineTest {
                     ),
                 ),
             ),
+            locationSignals = category(),
+            bypassResult = bypass(),
         )
 
         assertEquals(Verdict.NEEDS_REVIEW, verdict)
@@ -279,18 +279,19 @@ class VerdictEngineTest {
     private fun category(
         evidence: List<EvidenceItem> = emptyList(),
         needsReview: Boolean = false,
+        callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
     ): CategoryResult = CategoryResult(
         name = "test",
         detected = evidence.any { it.detected },
         findings = emptyList(),
         needsReview = needsReview,
         evidence = evidence,
+        callTransportLeaks = callTransportLeaks,
     )
 
     private fun bypass(
         evidence: List<EvidenceItem> = emptyList(),
         needsReview: Boolean = false,
-        callTransportLeaks: List<CallTransportLeakResult> = emptyList(),
     ): BypassResult = BypassResult(
         proxyEndpoint = null,
         proxyOwner = null,
@@ -299,7 +300,6 @@ class VerdictEngineTest {
         vpnNetworkIp = null,
         underlyingIp = null,
         xrayApiScanResult = null,
-        callTransportLeaks = callTransportLeaks,
         findings = emptyList(),
         detected = evidence.any { it.detected },
         needsReview = needsReview,

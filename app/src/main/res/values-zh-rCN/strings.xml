@@ -10,8 +10,13 @@
     <string name="settings_section_about">关于</string>
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">端口扫描需要较长时间</string>
+    <string name="settings_proxy_scan_title">本地代理扫描</string>
+    <string name="settings_proxy_scan_desc">扫描 localhost 上开放的 SOCKS5/HTTP 代理端口。</string>
+    <string name="settings_xray_api_scan_title">Xray gRPC API 扫描</string>
+    <string name="settings_xray_api_scan_desc">扫描 localhost 上暴露的 Xray gRPC API 端口。</string>
     <string name="settings_port_range">端口范围</string>
     <string name="settings_port_range_desc">用于 Split tunnel 扫描</string>
+    <string name="settings_port_range_desc_scans">供已启用的本地代理和 Xray 扫描使用。</string>
     <string name="settings_port_popular">常用</string>
     <string name="settings_port_extended">扩展</string>
     <string name="settings_port_full">完整</string>
@@ -110,7 +115,10 @@
 
     <string name="main_ipv6_error_ignored">已忽略 IPv6 错误： </string>
 
-    <string name="settings_port_range_preview">将扫描用于代理和 Xray API 的 localhost 端口：%1$s（%2$s）</string>
+    <string name="settings_port_range_preview_proxy_xray">将扫描用于代理和 Xray API 的 localhost 端口：%1$s（%2$s）</string>
+    <string name="settings_port_range_preview_proxy_only">将扫描用于代理的 localhost 端口：%1$s（%2$s）</string>
+    <string name="settings_port_range_preview_xray_only">将扫描用于 Xray API 的 localhost 端口：%1$s（%2$s）</string>
+    <string name="settings_port_range_preview_disabled">本地代理和 Xray 扫描已禁用。</string>
     <plurals name="settings_port_word">
         <item quantity="other">%1$s 个端口</item>
     </plurals>
@@ -291,8 +299,6 @@
     <string name="checker_bypass_progress_port_detail">端口 %1$d（%2$d%%）</string>
     <string name="checker_bypass_progress_xray_detail">正在查找 localhost 上的 gRPC API&#8230;</string>
     <string name="checker_bypass_progress_underlying_detail">正在检查非 VPN 网络访问能力&#8230;</string>
-    <string name="checker_bypass_progress_call_transport_phase">Call transport</string>
-    <string name="checker_bypass_progress_call_transport_detail">正在检查内置的 Telegram 目标和 experimental 的 call transport 目标&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">IP 检查</string>
     <string name="checker_bypass_progress_ip_detail">正在获取直接 IP 和经代理的 IP&#8230;</string>
     <string name="checker_bypass_progress_mtproto_detail">正在通过代理检查 Telegram DC&#8230;</string>

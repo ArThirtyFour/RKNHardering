@@ -106,6 +106,34 @@ class Socks5UdpAssociateClientTest {
         }
     }
 
+    @Test
+    fun `existing relay session can exchange payload without control socket`() {
+        FakeSocks5UdpServer(
+            responseSourceHost = "198.51.100.50",
+            responseSourcePort = 3479,
+            responsePayload = "pong".encodeToByteArray(),
+        ).use { server ->
+            Socks5UdpAssociateClient.openRelay(
+                relayHost = "127.0.0.1",
+                relayPort = server.relayPort,
+                readTimeoutMs = 1_000,
+            ).use { session ->
+                val response = session.exchange(
+                    targetHost = "stun.example.org",
+                    targetPort = 3478,
+                    payload = "ping".encodeToByteArray(),
+                )
+
+                assertEquals("stun.example.org", requireNotNull(server.lastTargetHost))
+                assertEquals(3478, requireNotNull(server.lastTargetPort))
+                assertArrayEquals("ping".encodeToByteArray(), requireNotNull(server.lastPayload))
+                assertEquals("198.51.100.50", response.sourceHost)
+                assertEquals(3479, response.sourcePort)
+                assertArrayEquals("pong".encodeToByteArray(), response.payload)
+            }
+        }
+    }
+
     private inline fun <reified T : Throwable> expectFailure(block: () -> Unit): T {
         try {
             block()

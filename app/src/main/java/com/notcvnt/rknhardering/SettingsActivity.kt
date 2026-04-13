@@ -34,6 +34,10 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
 
     private lateinit var switchSplitTunnel: MaterialSwitch
+    private lateinit var cardProxyScan: MaterialCardView
+    private lateinit var switchProxyScan: MaterialSwitch
+    private lateinit var cardXrayApiScan: MaterialCardView
+    private lateinit var switchXrayApiScan: MaterialSwitch
     private lateinit var cardPortRange: MaterialCardView
     private lateinit var chipGroupPortRange: ChipGroup
     private lateinit var customPortRangeContainer: LinearLayout
@@ -80,6 +84,10 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun bindViews() {
         switchSplitTunnel = findViewById(R.id.switchSplitTunnel)
+        cardProxyScan = findViewById(R.id.cardProxyScan)
+        switchProxyScan = findViewById(R.id.switchProxyScan)
+        cardXrayApiScan = findViewById(R.id.cardXrayApiScan)
+        switchXrayApiScan = findViewById(R.id.switchXrayApiScan)
         cardPortRange = findViewById(R.id.cardPortRange)
         chipGroupPortRange = findViewById(R.id.chipGroupPortRange)
         customPortRangeContainer = findViewById(R.id.customPortRangeContainer)
@@ -105,11 +113,14 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun loadSettings() {
         switchSplitTunnel.isChecked = prefs.getBoolean(PREF_SPLIT_TUNNEL_ENABLED, true)
+        switchProxyScan.isChecked = prefs.getBoolean(PREF_PROXY_SCAN_ENABLED, true)
+        switchXrayApiScan.isChecked = prefs.getBoolean(PREF_XRAY_API_SCAN_ENABLED, true)
         switchNetworkRequests.isChecked = prefs.getBoolean(PREF_NETWORK_REQUESTS_ENABLED, true)
         switchCallTransportProbe.isChecked = prefs.getBoolean(PREF_CALL_TRANSPORT_PROBE_ENABLED, false)
         switchPrivacyMode.isChecked = prefs.getBoolean(PREF_PRIVACY_MODE, false)
 
-        updatePortRangeEnabled(switchSplitTunnel.isChecked)
+        updateLocalScanTogglesEnabled(switchSplitTunnel.isChecked)
+        updatePortRangeEnabled(switchSplitTunnel.isChecked && isAnyLocalScanEnabled())
         updateCallTransportEnabled(switchNetworkRequests.isChecked)
 
         val portRange = prefs.getString(PREF_PORT_RANGE, "full") ?: "full"
@@ -151,7 +162,20 @@ class SettingsActivity : AppCompatActivity() {
     private fun setupListeners() {
         switchSplitTunnel.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit { putBoolean(PREF_SPLIT_TUNNEL_ENABLED, isChecked) }
-            updatePortRangeEnabled(isChecked)
+            updateLocalScanTogglesEnabled(isChecked)
+            updatePortRangeEnabled(isChecked && isAnyLocalScanEnabled())
+        }
+
+        switchProxyScan.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit { putBoolean(PREF_PROXY_SCAN_ENABLED, isChecked) }
+            updatePortRangeEnabled(switchSplitTunnel.isChecked && (isChecked || switchXrayApiScan.isChecked))
+            updatePortRangePreview()
+        }
+
+        switchXrayApiScan.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit { putBoolean(PREF_XRAY_API_SCAN_ENABLED, isChecked) }
+            updatePortRangeEnabled(switchSplitTunnel.isChecked && (isChecked || switchProxyScan.isChecked))
+            updatePortRangePreview()
         }
 
         switchNetworkRequests.setOnCheckedChangeListener { _, isChecked ->
@@ -270,6 +294,13 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateLocalScanTogglesEnabled(enabled: Boolean) {
+        cardProxyScan.alpha = if (enabled) 1.0f else 0.5f
+        setViewAndChildrenEnabled(cardProxyScan, enabled)
+        cardXrayApiScan.alpha = if (enabled) 1.0f else 0.5f
+        setViewAndChildrenEnabled(cardXrayApiScan, enabled)
+    }
+
     private fun updatePortRangeEnabled(enabled: Boolean) {
         cardPortRange.alpha = if (enabled) 1.0f else 0.5f
         setViewAndChildrenEnabled(cardPortRange, enabled)
@@ -303,6 +334,10 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun updatePortRangePreview() {
+        if (!isAnyLocalScanEnabled()) {
+            textPortRangePreview.text = getString(R.string.settings_port_range_preview_disabled)
+            return
+        }
         val previewRanges = PortScanPlanner.buildPreviewRanges(
             portRange = selectedPortRange(),
             portRangeStart = currentCustomPortRange().first,
@@ -318,7 +353,16 @@ class SettingsActivity : AppCompatActivity() {
         val portsCount = previewRanges.sumOf { it.last - it.first + 1 }
         val formattedCount = NumberFormat.getIntegerInstance().format(portsCount)
         val portCountLabel = resources.getQuantityString(R.plurals.settings_port_word, portsCount, formattedCount)
-        textPortRangePreview.text = getString(R.string.settings_port_range_preview, portsText, portCountLabel)
+        val previewFormat = when {
+            switchProxyScan.isChecked && switchXrayApiScan.isChecked -> R.string.settings_port_range_preview_proxy_xray
+            switchProxyScan.isChecked -> R.string.settings_port_range_preview_proxy_only
+            else -> R.string.settings_port_range_preview_xray_only
+        }
+        textPortRangePreview.text = getString(previewFormat, portsText, portCountLabel)
+    }
+
+    private fun isAnyLocalScanEnabled(): Boolean {
+        return switchProxyScan.isChecked || switchXrayApiScan.isChecked
     }
 
     private fun selectedPortRange(): String {
@@ -461,6 +505,8 @@ class SettingsActivity : AppCompatActivity() {
 
     companion object {
         const val PREF_SPLIT_TUNNEL_ENABLED = "pref_split_tunnel_enabled"
+        const val PREF_PROXY_SCAN_ENABLED = "pref_proxy_scan_enabled"
+        const val PREF_XRAY_API_SCAN_ENABLED = "pref_xray_api_scan_enabled"
         const val PREF_PORT_RANGE = "pref_port_range"
         const val PREF_PORT_RANGE_START = "pref_port_range_start"
         const val PREF_PORT_RANGE_END = "pref_port_range_end"

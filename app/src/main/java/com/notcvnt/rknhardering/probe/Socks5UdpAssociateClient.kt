@@ -42,7 +42,7 @@ object Socks5UdpAssociateClient {
     )
 
     class Session internal constructor(
-        private val controlSocket: Socket,
+        private val controlSocket: Socket?,
         private val udpSocket: DatagramSocket,
         val relayHost: String,
         val relayPort: Int,
@@ -73,7 +73,27 @@ object Socks5UdpAssociateClient {
 
         override fun close() {
             runCatching { udpSocket.close() }
-            runCatching { controlSocket.close() }
+            runCatching { controlSocket?.close() }
+        }
+    }
+
+    fun openRelay(
+        relayHost: String,
+        relayPort: Int,
+        readTimeoutMs: Int = 3_000,
+    ): Session {
+        val udpSocket = DatagramSocket()
+        try {
+            udpSocket.soTimeout = readTimeoutMs
+            return Session(
+                controlSocket = null,
+                udpSocket = udpSocket,
+                relayHost = relayHost,
+                relayPort = relayPort,
+            )
+        } catch (error: Exception) {
+            runCatching { udpSocket.close() }
+            throw error
         }
     }
 

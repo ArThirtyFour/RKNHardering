@@ -15,6 +15,8 @@ import kotlinx.coroutines.coroutineScope
 
 data class CheckSettings(
     val splitTunnelEnabled: Boolean = true,
+    val proxyScanEnabled: Boolean = true,
+    val xrayApiScanEnabled: Boolean = true,
     val networkRequestsEnabled: Boolean = true,
     val callTransportProbeEnabled: Boolean = false,
     val resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
@@ -36,51 +38,112 @@ sealed interface CheckUpdate {
 
 object VpnCheckRunner {
 
+    internal data class Dependencies(
+        val geoIpCheck: suspend (Context, DnsResolverConfig) -> CategoryResult =
+            { ctx, resolverConfig -> GeoIpChecker.check(ctx, resolverConfig) },
+        val ipComparisonCheck: suspend (Context, DnsResolverConfig) -> IpComparisonResult =
+            { ctx, resolverConfig -> IpComparisonChecker.check(ctx, resolverConfig = resolverConfig) },
+        val underlyingProbe: suspend (Context, DnsResolverConfig) -> UnderlyingNetworkProber.ProbeResult =
+            { ctx, resolverConfig -> UnderlyingNetworkProber.probe(ctx, resolverConfig) },
+        val directCheck: suspend (Context, UnderlyingNetworkProber.ProbeResult?) -> CategoryResult =
+            { ctx, tunActiveProbeResult -> DirectSignsChecker.check(ctx, tunActiveProbeResult = tunActiveProbeResult) },
+        val indirectCheck: suspend (Context, Boolean, Boolean, DnsResolverConfig) -> CategoryResult =
+            { ctx, networkRequestsEnabled, callTransportProbeEnabled, resolverConfig ->
+                IndirectSignsChecker.check(
+                    context = ctx,
+                    networkRequestsEnabled = networkRequestsEnabled,
+                    callTransportProbeEnabled = callTransportProbeEnabled,
+                    resolverConfig = resolverConfig,
+                )
+            },
+        val locationCheck: suspend (Context, Boolean, DnsResolverConfig) -> CategoryResult =
+            { ctx, networkRequestsEnabled, resolverConfig ->
+                LocationSignalsChecker.check(
+                    ctx,
+                    networkRequestsEnabled = networkRequestsEnabled,
+                    resolverConfig = resolverConfig,
+                )
+            },
+        val bypassCheck: suspend (
+            Context,
+            DnsResolverConfig,
+            Boolean,
+            Boolean,
+            Boolean,
+            String,
+            Int,
+            Int,
+            kotlinx.coroutines.Deferred<UnderlyingNetworkProber.ProbeResult>?,
+            (suspend (BypassChecker.Progress) -> Unit)?,
+        ) -> BypassResult =
+            { ctx, resolverConfig, splitTunnelEnabled, proxyScanEnabled, xrayApiScanEnabled, portRange, portRangeStart, portRangeEnd, underlyingProbeDeferred, onProgress ->
+                BypassChecker.check(
+                    ctx,
+                    resolverConfig,
+                    splitTunnelEnabled,
+                    proxyScanEnabled,
+                    xrayApiScanEnabled,
+                    portRange,
+                    portRangeStart,
+                    portRangeEnd,
+                    underlyingProbeDeferred,
+                    onProgress,
+                )
+            },
+    )
+
+    @Volatile
+    internal var dependenciesOverride: Dependencies? = null
+
     suspend fun run(
         context: Context,
         settings: CheckSettings = CheckSettings(),
         onUpdate: (suspend (CheckUpdate) -> Unit)? = null,
     ): CheckResult = coroutineScope {
+        val dependencies = dependenciesOverride ?: Dependencies()
         val geoIpDeferred = if (settings.networkRequestsEnabled) {
-            async { GeoIpChecker.check(context, settings.resolverConfig) }
+            async { dependencies.geoIpCheck(context, settings.resolverConfig) }
         } else null
 
         val ipComparisonDeferred = if (settings.networkRequestsEnabled) {
-            async { IpComparisonChecker.check(context, resolverConfig = settings.resolverConfig) }
+            async { dependencies.ipComparisonCheck(context, settings.resolverConfig) }
         } else null
 
         val tunActiveProbeDeferred = if (settings.splitTunnelEnabled) {
-            async { UnderlyingNetworkProber.probe(context, settings.resolverConfig) }
+            async { dependencies.underlyingProbe(context, settings.resolverConfig) }
         } else null
 
         val directDeferred = async {
-            DirectSignsChecker.check(
+            dependencies.directCheck(
                 context,
-                tunActiveProbeResult = tunActiveProbeDeferred?.await(),
+                tunActiveProbeDeferred?.await(),
             )
         }
-        val indirectDeferred = async { IndirectSignsChecker.check(context) }
+        val indirectDeferred = async {
+            dependencies.indirectCheck(
+                context,
+                settings.networkRequestsEnabled,
+                settings.callTransportProbeEnabled,
+                settings.resolverConfig,
+            )
+        }
         val locationDeferred = async {
-            LocationSignalsChecker.check(
-                context,
-                networkRequestsEnabled = settings.networkRequestsEnabled,
-                resolverConfig = settings.resolverConfig,
-            )
+            dependencies.locationCheck(context, settings.networkRequestsEnabled, settings.resolverConfig)
         }
-        val bypassEnabled = settings.splitTunnelEnabled ||
-            (settings.networkRequestsEnabled && settings.callTransportProbeEnabled)
+        val bypassEnabled = settings.splitTunnelEnabled
         val bypassDeferred = if (bypassEnabled) {
             async {
-                BypassChecker.check(
-                    context = context,
-                    resolverConfig = settings.resolverConfig,
-                    splitTunnelEnabled = settings.splitTunnelEnabled,
-                    callTransportProbeEnabled = settings.networkRequestsEnabled && settings.callTransportProbeEnabled,
-                    portRange = settings.portRange,
-                    portRangeStart = settings.portRangeStart,
-                    portRangeEnd = settings.portRangeEnd,
-                    underlyingProbeDeferred = tunActiveProbeDeferred,
-                    onProgress = { progress ->
+                dependencies.bypassCheck(
+                    context,
+                    settings.resolverConfig,
+                    settings.splitTunnelEnabled,
+                    settings.proxyScanEnabled,
+                    settings.xrayApiScanEnabled,
+                    settings.portRange,
+                    settings.portRangeStart,
+                    settings.portRangeEnd,
+                    tunActiveProbeDeferred,
+                    { progress ->
                         onUpdate?.invoke(CheckUpdate.BypassProgress(progress))
                     },
                 )
@@ -151,7 +214,6 @@ object VpnCheckRunner {
             vpnNetworkIp = null,
             underlyingIp = null,
             xrayApiScanResult = null,
-            callTransportLeaks = emptyList(),
             findings = emptyList(),
             detected = false,
         )

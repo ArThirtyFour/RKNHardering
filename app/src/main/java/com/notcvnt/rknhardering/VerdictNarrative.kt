@@ -71,7 +71,7 @@ object VerdictNarrativeBuilder {
             (it.source == EvidenceSource.VPN_NETWORK_BINDING || it.source == EvidenceSource.TUN_ACTIVE_PROBE) &&
                 extractIps(it.description).isNotEmpty()
         }
-        val callTransportLeak = result.bypassResult.callTransportLeaks.firstOrNull {
+        val callTransportLeaks = result.indirectSigns.callTransportLeaks.filter {
             it.status == CallTransportStatus.NEEDS_REVIEW
         }
 
@@ -91,7 +91,7 @@ object VerdictNarrativeBuilder {
             geoIp = extractGeoIp(context, result.geoIp),
             ruCheckerIp = result.ipComparison.ruGroup.canonicalIp,
             nonRuCheckerIp = result.ipComparison.nonRuGroup.canonicalIp,
-            callTransportLeak = callTransportLeak,
+            callTransportLeaks = callTransportLeaks,
             technicalSignalsPresent = hasTechnicalSignals(result),
         )
     }
@@ -179,7 +179,7 @@ object VerdictNarrativeBuilder {
         addRow(context.getString(R.string.narrative_label_real_ip), snapshot.realIp)
         addRow(context.getString(R.string.narrative_label_direct_ip), snapshot.directIp)
         addRow(context.getString(R.string.narrative_label_proxy_ip), snapshot.proxyIp)
-        snapshot.callTransportLeak?.let { leak ->
+        snapshot.callTransportLeaks.take(4).forEach { leak ->
             addRow(
                 context.getString(R.string.narrative_label_call_transport),
                 "${leak.service.label()} (${leak.probeKind.label(context)})",
@@ -257,7 +257,7 @@ object VerdictNarrativeBuilder {
         if (result.indirectSigns.detected) {
             reasons += context.getString(R.string.narrative_reason_indirect_signs)
         }
-        if (result.bypassResult.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW }) {
+        if (result.indirectSigns.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW }) {
             reasons += context.getString(R.string.narrative_reason_call_transport_signal)
         }
 
@@ -291,7 +291,7 @@ object VerdictNarrativeBuilder {
             result.ipComparison.detected ||
             result.ipComparison.needsReview ||
             result.directSigns.findings.any { it.source == EvidenceSource.TUN_ACTIVE_PROBE } ||
-            result.bypassResult.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW } ||
+            result.indirectSigns.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW } ||
             result.bypassResult.findings.any {
                 it.source == EvidenceSource.TUN_ACTIVE_PROBE ||
                     it.source == EvidenceSource.VPN_NETWORK_BINDING ||
@@ -381,7 +381,7 @@ object VerdictNarrativeBuilder {
         val geoIp: String?,
         val ruCheckerIp: String?,
         val nonRuCheckerIp: String?,
-        val callTransportLeak: CallTransportLeakResult?,
+        val callTransportLeaks: List<CallTransportLeakResult>,
         val technicalSignalsPresent: Boolean,
     ) {
         val hasPublicIp: Boolean
@@ -390,11 +390,10 @@ object VerdictNarrativeBuilder {
                 realIp,
                 directIp,
                 proxyIp,
-                callTransportLeak?.observedPublicIp,
-                callTransportLeak?.mappedIp,
                 geoIp,
                 ruCheckerIp,
                 nonRuCheckerIp,
-            ).any { !it.isNullOrBlank() }
+            ).any { !it.isNullOrBlank() } ||
+                callTransportLeaks.any { !it.observedPublicIp.isNullOrBlank() || !it.mappedIp.isNullOrBlank() }
     }
 }
