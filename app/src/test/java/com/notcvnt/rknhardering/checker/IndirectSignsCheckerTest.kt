@@ -76,6 +76,21 @@ class IndirectSignsCheckerTest {
     }
 
     @Test
+    fun `parses proc net ipv6 listeners`() {
+        val listeners = IndirectSignsChecker.parseProcNetListeners(
+            lines = listOf(
+                "  sl  local_address                         rem_address                          st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode",
+                "   0: 00000000000000000000000001000000:2382 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 0 0 0 1 0000000000000000 100 0 0 10 0",
+            ),
+            protocol = "tcp6",
+        )
+
+        assertEquals(1, listeners.size)
+        assertEquals(java.net.InetAddress.getByName("::1").hostAddress, listeners.single().host)
+        assertEquals(9090, listeners.single().port)
+    }
+
+    @Test
     fun `resolves owner for a single visible package`() {
         val owner = LocalSocketInspector.resolveOwner(
             uid = 10123,

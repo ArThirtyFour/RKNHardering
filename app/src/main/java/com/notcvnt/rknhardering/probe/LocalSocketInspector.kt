@@ -131,7 +131,15 @@ object LocalSocketInspector {
     private fun decodeProcAddress(hexAddress: String, ipv6: Boolean): String? {
         return try {
             val bytes = hexAddress.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-            val orderedBytes = if (ipv6) bytes else bytes.reversedArray()
+            val orderedBytes = if (ipv6) {
+                bytes
+                    .asList()
+                    .chunked(4)
+                    .flatMap { word -> word.asReversed() }
+                    .toByteArray()
+            } else {
+                bytes.reversedArray()
+            }
             InetAddress.getByAddress(orderedBytes).hostAddress
         } catch (_: Exception) {
             null
