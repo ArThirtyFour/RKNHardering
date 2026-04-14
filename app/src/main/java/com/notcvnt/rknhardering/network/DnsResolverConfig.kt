@@ -1,6 +1,9 @@
 package com.notcvnt.rknhardering.network
 
 import android.content.SharedPreferences
+import java.net.Inet4Address
+import java.net.Inet6Address
+import java.net.InetAddress
 import java.net.URL
 import java.util.Locale
 
@@ -66,7 +69,10 @@ data class DnsResolverConfig(
 ) {
     fun effectiveDirectServers(): List<String> {
         if (mode != DnsResolverMode.DIRECT) return emptyList()
-        return effectivePresetSpec()?.directServers ?: customDirectServers
+        return (effectivePresetSpec()?.directServers ?: customDirectServers)
+            .map(String::trim)
+            .filter(::isValidIpLiteral)
+            .distinct()
     }
 
     fun effectiveDohUrl(): String? {
@@ -133,9 +139,18 @@ data class DnsResolverConfig(
             val normalized = value.trim()
             if (normalized.isEmpty()) return false
             if (normalized.contains("://")) return false
-            val ipv4 = Regex("""^(\d{1,3}\.){3}\d{1,3}$""")
-            val ipv6 = Regex("""^[0-9a-fA-F:]+$""")
-            return ipv4.matches(normalized) || ipv6.matches(normalized)
+            if (normalized.contains("/")) return false
+
+            val expectedFamily = when {
+                normalized.all { it.isDigit() || it == '.' } -> Inet4Address::class.java
+                normalized.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' || it == ':' } -> Inet6Address::class.java
+                else -> return false
+            }
+
+            return runCatching {
+                val parsed = InetAddress.getByName(normalized)
+                expectedFamily.isInstance(parsed)
+            }.getOrDefault(false)
         }
 
         fun isValidDohUrl(value: String): Boolean {

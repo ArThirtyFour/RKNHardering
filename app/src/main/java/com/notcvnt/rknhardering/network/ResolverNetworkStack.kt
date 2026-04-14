@@ -265,11 +265,15 @@ internal class DirectDns(
     private val binding: ResolverBinding? = null,
 ) : Dns {
     private val serverAddresses = servers.mapNotNull { value ->
-        runCatching { InetAddress.getByName(value.trim()) }.getOrNull()
+        value.trim()
+            .takeIf(DnsResolverConfig::isValidIpLiteral)
+            ?.let { normalized -> runCatching { InetAddress.getByName(normalized) }.getOrNull() }
     }
 
     override fun lookup(hostname: String): List<InetAddress> {
-        if (serverAddresses.isEmpty()) return Dns.SYSTEM.lookup(hostname)
+        if (serverAddresses.isEmpty()) {
+            throw UnknownHostException("No valid direct DNS servers configured")
+        }
         if (DnsResolverConfig.isValidIpLiteral(hostname)) {
             return listOf(InetAddress.getByName(hostname))
         }

@@ -53,6 +53,11 @@ class DirectDnsTest {
         assertEquals(listOf("203.0.113.5"), resolved.mapNotNull { it.hostAddress })
     }
 
+    @Test(expected = UnknownHostException::class)
+    fun `direct dns fails fast when no valid servers remain`() {
+        DirectDns(listOf("not-an-ip", "999.999.999.999")).lookup("resolver-test.local")
+    }
+
     @Test
     fun `direct dns uses os device binding for udp sockets`() {
         val boundInterfaces = mutableListOf<String>()
