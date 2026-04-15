@@ -183,7 +183,7 @@ class VerdictEngineTest {
     }
 
     @Test
-    fun `call transport leak elevates clean verdict to needs review`() {
+    fun `call transport leak does not affect verdict`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = category(),
@@ -207,11 +207,11 @@ class VerdictEngineTest {
             bypassResult = bypass(),
         )
 
-        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+        assertEquals(Verdict.NOT_DETECTED, verdict)
     }
 
     @Test
-    fun `proxy assisted udp leak elevates clean verdict to needs review`() {
+    fun `proxy assisted udp leak does not affect verdict`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = category(),
@@ -235,7 +235,7 @@ class VerdictEngineTest {
             bypassResult = bypass(),
         )
 
-        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+        assertEquals(Verdict.NOT_DETECTED, verdict)
     }
 
     private data class MatrixCase(

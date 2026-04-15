@@ -1,7 +1,6 @@
 package com.notcvnt.rknhardering.checker
 
 import com.notcvnt.rknhardering.model.BypassResult
-import com.notcvnt.rknhardering.model.CallTransportStatus
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Verdict
@@ -32,9 +31,6 @@ object VerdictEngine {
         val directEvidence = directSigns.evidence.filter { it.detected }
         val indirectEvidence = indirectSigns.evidence.filter { it.detected }
         val bypassEvidence = bypassResult.evidence.filter { it.detected }
-        val callTransportNeedsReview = indirectSigns.callTransportLeaks.any {
-            it.status == CallTransportStatus.NEEDS_REVIEW
-        }
 
         if (bypassEvidence.any { it.source == EvidenceSource.SPLIT_TUNNEL_BYPASS }) {
             return Verdict.DETECTED
@@ -74,7 +70,7 @@ object VerdictEngine {
             else -> Verdict.DETECTED
         }
 
-        if ((bypassResult.needsReview || callTransportNeedsReview) && matrixVerdict == Verdict.NOT_DETECTED) {
+        if (bypassResult.needsReview && matrixVerdict == Verdict.NOT_DETECTED) {
             return Verdict.NEEDS_REVIEW
         }
 
