@@ -116,6 +116,50 @@ internal fun maskInfoValue(value: String, privacyMode: Boolean): String {
     return if (privacyMode) maskIpsInText(value) else value
 }
 
+private const val CALL_TRANSPORT_NO_STUN_RESPONSE_MARKER = "did not receive a STUN response"
+private const val CALL_TRANSPORT_TELEGRAM_DC_UNREACHABLE_MARKER = "did not expose a reachable Telegram DC"
+
+internal fun formatCallTransportReason(
+    context: android.content.Context,
+    leak: CallTransportLeakResult,
+    privacyMode: Boolean,
+): String? {
+    val summary = leak.summary.trim()
+    return when {
+        leak.status == CallTransportStatus.BASELINE || leak.status == CallTransportStatus.NEEDS_REVIEW -> null
+        summary.contains(CALL_TRANSPORT_NO_STUN_RESPONSE_MARKER, ignoreCase = true) ->
+            buildCallTransportReason(
+                base = context.getString(R.string.main_card_call_transport_reason_no_response),
+                detail = summaryDetailAfterMarker(summary, CALL_TRANSPORT_NO_STUN_RESPONSE_MARKER),
+                privacyMode = privacyMode,
+            )
+        summary.contains(CALL_TRANSPORT_TELEGRAM_DC_UNREACHABLE_MARKER, ignoreCase = true) ->
+            buildCallTransportReason(
+                base = context.getString(R.string.main_card_call_transport_reason_telegram_dc_unreachable),
+                detail = summaryDetailAfterMarker(summary, CALL_TRANSPORT_TELEGRAM_DC_UNREACHABLE_MARKER),
+                privacyMode = privacyMode,
+            )
+        summary.contains("experimental trace is disabled in release builds", ignoreCase = true) ->
+            context.getString(R.string.main_card_call_transport_reason_release_only)
+        summary.contains("targets are unavailable", ignoreCase = true) ||
+            summary.contains("target catalog is unavailable", ignoreCase = true) ->
+            context.getString(R.string.main_card_call_transport_reason_targets_unavailable)
+        else -> maskInfoValue(summary, privacyMode)
+    }
+}
+
+private fun buildCallTransportReason(base: String, detail: String?, privacyMode: Boolean): String {
+    val maskedDetail = detail
+        ?.takeIf { it.isNotBlank() }
+        ?.let { maskInfoValue(it, privacyMode) }
+    return if (maskedDetail.isNullOrBlank()) base else "$base: $maskedDetail"
+}
+
+private fun summaryDetailAfterMarker(summary: String, marker: String): String? {
+    val tail = summary.substringAfter(marker, missingDelimiterValue = "").trim()
+    return tail.removePrefix(":").trim().takeIf { it.isNotBlank() }
+}
+
 private fun isUniqueLocalIpv6(address: Inet6Address): Boolean {
     val firstByte = address.address.firstOrNull()?.toInt()?.and(0xff) ?: return false
     return (firstByte and 0xfe) == 0xfc
@@ -1712,6 +1756,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val statusLabel = when (leak.status) {
+            CallTransportStatus.BASELINE -> getString(R.string.main_card_call_transport_status_baseline)
             CallTransportStatus.NO_SIGNAL -> getString(R.string.main_card_call_transport_status_no_signal)
             CallTransportStatus.NEEDS_REVIEW -> getString(R.string.main_card_call_transport_status_needs_review)
             CallTransportStatus.UNSUPPORTED -> getString(R.string.main_card_call_transport_status_unsupported)
@@ -1727,9 +1772,10 @@ class MainActivity : AppCompatActivity() {
             CallTransportService.WHATSAPP -> "WhatsApp"
         }
         val statusColor = when (leak.status) {
+            CallTransportStatus.BASELINE -> R.color.status_green
             CallTransportStatus.NEEDS_REVIEW -> R.color.status_amber
             CallTransportStatus.ERROR -> R.color.status_amber
-            CallTransportStatus.NO_SIGNAL -> R.color.status_green
+            CallTransportStatus.NO_SIGNAL -> R.color.md_on_surface_variant
             CallTransportStatus.UNSUPPORTED -> R.color.md_on_surface_variant
         }
 
@@ -1739,9 +1785,10 @@ class MainActivity : AppCompatActivity() {
         }
         val indicator = TextView(this).apply {
             text = when (leak.status) {
+                CallTransportStatus.BASELINE -> "\u2713"
                 CallTransportStatus.NEEDS_REVIEW -> "?"
                 CallTransportStatus.ERROR -> "\u26A0"
-                CallTransportStatus.NO_SIGNAL -> "\u2713"
+                CallTransportStatus.NO_SIGNAL -> "\u2014"
                 CallTransportStatus.UNSUPPORTED -> "\u2014"
             }
             setTextColor(ContextCompat.getColor(this@MainActivity, statusColor))
@@ -1760,6 +1807,19 @@ class MainActivity : AppCompatActivity() {
         headerRow.addView(indicator)
         headerRow.addView(headerText)
         container.addView(headerRow)
+
+        formatCallTransportReason(this, leak, privacyMode)?.let { reason ->
+            val reasonColor = when (leak.status) {
+                CallTransportStatus.ERROR -> R.color.status_amber
+                else -> R.color.md_on_surface_variant
+            }
+            container.addView(TextView(this).apply {
+                text = reason
+                textSize = 12f
+                setPadding(22.dp, 2.dp, 0, 0)
+                setTextColor(ContextCompat.getColor(this@MainActivity, reasonColor))
+            })
+        }
 
         val target = leak.targetHost
         if (target != null) {

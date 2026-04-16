@@ -40,7 +40,7 @@ class CallTransportCheckerTest {
     }
 
     @Test
-    fun `probeDirect keeps active path as baseline signal`() {
+    fun `probeDirect marks active path baseline when stun responds without leak`() {
         CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
             loadCatalog = { _, _ -> catalogWithTelegramTarget() },
             loadPaths = {
@@ -57,7 +57,7 @@ class CallTransportCheckerTest {
         val results = runBlockingProbeDirect(experimental = false)
 
         val telegram = results.first { it.service == CallTransportService.TELEGRAM }
-        assertEquals(CallTransportStatus.NO_SIGNAL, telegram.status)
+        assertEquals(CallTransportStatus.BASELINE, telegram.status)
         assertEquals(CallTransportProbeKind.DIRECT_UDP_STUN, telegram.probeKind)
         assertEquals(CallTransportNetworkPath.ACTIVE, telegram.networkPath)
         assertEquals("149.154.167.51", telegram.targetHost)

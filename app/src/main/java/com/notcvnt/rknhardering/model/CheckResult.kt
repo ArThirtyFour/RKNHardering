@@ -46,6 +46,7 @@ enum class CallTransportProbeKind {
 }
 
 enum class CallTransportStatus {
+    BASELINE,
     NO_SIGNAL,
     NEEDS_REVIEW,
     UNSUPPORTED,

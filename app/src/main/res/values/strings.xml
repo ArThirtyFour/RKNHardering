@@ -84,13 +84,18 @@
     <string name="main_card_direct_signs">Direct signs</string>
     <string name="main_card_indirect_signs">Indirect signs</string>
     <string name="main_card_call_transport">STUN servers</string>
-    <string name="main_card_call_transport_status_no_signal">No signal</string>
+    <string name="main_card_call_transport_status_baseline">Responded</string>
+    <string name="main_card_call_transport_status_no_signal">No response</string>
     <string name="main_card_call_transport_status_needs_review">Needs review</string>
     <string name="main_card_call_transport_status_unsupported">Unsupported</string>
     <string name="main_card_call_transport_status_error">Error</string>
     <string name="main_card_call_transport_path_active">Active network</string>
     <string name="main_card_call_transport_path_underlying">Underlying network</string>
     <string name="main_card_call_transport_path_proxy">Local proxy</string>
+    <string name="main_card_call_transport_reason_no_response">No STUN response</string>
+    <string name="main_card_call_transport_reason_telegram_dc_unreachable">Telegram DC is unreachable through the local SOCKS5 proxy</string>
+    <string name="main_card_call_transport_reason_release_only">WhatsApp tracing is available only in debug or experimental builds</string>
+    <string name="main_card_call_transport_reason_targets_unavailable">Targets for this check are unavailable</string>
     <string name="main_card_location_signals">Location signals</string>
     <string name="main_verdict_details">Details</string>
 

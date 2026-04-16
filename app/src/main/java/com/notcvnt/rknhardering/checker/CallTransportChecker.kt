@@ -479,7 +479,7 @@ object CallTransportChecker {
                 ) {
                     CallTransportStatus.NEEDS_REVIEW
                 } else {
-                    CallTransportStatus.NO_SIGNAL
+                    CallTransportStatus.BASELINE
                 }
         }
     }
@@ -680,8 +680,9 @@ object CallTransportChecker {
         return when (status) {
             CallTransportStatus.NEEDS_REVIEW -> 4
             CallTransportStatus.ERROR -> 3
-            CallTransportStatus.NO_SIGNAL -> 2
-            CallTransportStatus.UNSUPPORTED -> 1
+            CallTransportStatus.BASELINE -> 2
+            CallTransportStatus.NO_SIGNAL -> 1
+            CallTransportStatus.UNSUPPORTED -> 0
         }
     }
 
@@ -717,6 +718,7 @@ object CallTransportChecker {
                 }
                 CallTransportStatus.NO_SIGNAL,
                 CallTransportStatus.UNSUPPORTED,
+                CallTransportStatus.BASELINE,
                 -> Unit
             }
         }

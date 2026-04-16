@@ -44,6 +44,7 @@ object ResolverNetworkStack {
         config: DnsResolverConfig,
         binding: ResolverBinding? = null,
     ): List<InetAddress> {
+        literalToInetAddress(hostname)?.let { return listOf(it) }
         return dns(config, binding).lookup(hostname)
     }
 

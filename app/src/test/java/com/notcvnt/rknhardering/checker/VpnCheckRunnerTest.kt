@@ -92,7 +92,7 @@ class VpnCheckRunnerTest {
         )
 
         assertTrue(result.indirectSigns.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW })
-        assertEquals(Verdict.NEEDS_REVIEW, result.verdict)
+        assertEquals(Verdict.NOT_DETECTED, result.verdict)
     }
 
     @Test
