@@ -1,6 +1,8 @@
 package com.notcvnt.rknhardering.checker
 
 import com.notcvnt.rknhardering.model.BypassResult
+import com.notcvnt.rknhardering.model.CallTransportNetworkPath
+import com.notcvnt.rknhardering.model.CallTransportStatus
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Verdict
@@ -69,8 +71,15 @@ object VerdictEngine {
             !geoMatrixHit && directMatrixHit && indirectMatrixHit -> Verdict.NEEDS_REVIEW
             else -> Verdict.DETECTED
         }
+        val hasActionableCallTransportLeak = indirectSigns.callTransportLeaks.any {
+            it.status == CallTransportStatus.NEEDS_REVIEW &&
+                it.networkPath != CallTransportNetworkPath.LOCAL_PROXY
+        }
 
         if (bypassResult.needsReview && matrixVerdict == Verdict.NOT_DETECTED) {
+            return Verdict.NEEDS_REVIEW
+        }
+        if (hasActionableCallTransportLeak && matrixVerdict == Verdict.NOT_DETECTED) {
             return Verdict.NEEDS_REVIEW
         }
 

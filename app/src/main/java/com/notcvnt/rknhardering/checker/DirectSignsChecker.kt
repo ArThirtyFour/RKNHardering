@@ -16,6 +16,7 @@ import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.MatchedVpnApp
 import com.notcvnt.rknhardering.network.NetworkInterfaceNameNormalizer
 import com.notcvnt.rknhardering.probe.PublicIpProbeMode
+import com.notcvnt.rknhardering.probe.TunProbeResolveStrategy
 import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import com.notcvnt.rknhardering.vpn.InstalledVpnAppDetector
 
@@ -644,10 +645,14 @@ object DirectSignsChecker {
     ): SignalOutcome {
         val comparison = result.vpnIpComparison
         result.vpnIp?.let { vpnIp ->
-            val transportOnly = comparison?.usedCurlCompatibleFallback() == true
+            val transportOnly = comparison?.usedCurlCompatibleFallback() == true &&
+                comparison.curlCompatible.transportDiagnostics.resolveStrategy != TunProbeResolveStrategy.KOTLIN_INJECTED
             val description = context.getString(
-                if (transportOnly) R.string.checker_bypass_tun_probe_success_transport_only
-                else R.string.checker_bypass_tun_probe_success,
+                when {
+                    transportOnly -> R.string.checker_bypass_tun_probe_success_transport_only
+                    comparison?.usedCurlCompatibleFallback() == true -> R.string.checker_bypass_tun_probe_success_curl_compatible
+                    else -> R.string.checker_bypass_tun_probe_success
+                },
                 vpnIp,
             )
             val confidence = if (transportOnly) EvidenceConfidence.MEDIUM else EvidenceConfidence.HIGH
@@ -676,7 +681,11 @@ object DirectSignsChecker {
                 findings.add(
                     Finding(
                         description = context.getString(
-                            R.string.checker_bypass_tun_probe_dns_mismatch,
+                            if (transportOnly) {
+                                R.string.checker_bypass_tun_probe_dns_mismatch
+                            } else {
+                                R.string.checker_bypass_tun_probe_dns_mismatch_curl_compatible
+                            },
                             comparison.strict.error ?: result.vpnError ?: "unknown error",
                         ),
                         needsReview = true,

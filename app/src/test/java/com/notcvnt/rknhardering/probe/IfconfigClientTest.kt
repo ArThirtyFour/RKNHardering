@@ -2,7 +2,9 @@ package com.notcvnt.rknhardering.probe
 
 import android.net.Network
 import com.notcvnt.rknhardering.network.DnsResolverConfig
+import com.notcvnt.rknhardering.network.ResolverNetworkStack
 import com.notcvnt.rknhardering.network.ResolverBinding
+import okhttp3.Dns
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
+import java.net.InetAddress
 
 @RunWith(RobolectricTestRunner::class)
 class IfconfigClientTest {
@@ -18,18 +21,29 @@ class IfconfigClientTest {
     @After
     fun tearDown() {
         PublicIpClient.resetForTests()
+        NativeCurlBridge.resetForTests()
+        ResolverNetworkStack.dnsFactoryOverride = null
+        ResolverNetworkStack.resetForTests()
     }
 
     @Test
     fun `fetch ip via network keeps primary then fallback order`() {
-        val observedBindings = mutableListOf<ResolverBinding?>()
+        val events = mutableListOf<String>()
         PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
-            observedBindings += binding
+            events += "strict:${binding?.javaClass?.simpleName}"
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.20")
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        NativeCurlBridge.executeOverride = { request ->
+            events += "native:${request.interfaceName}"
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.20",
+            )
         }
 
         val result = kotlinx.coroutines.runBlocking {
@@ -45,13 +59,8 @@ class IfconfigClientTest {
 
         assertTrue(result.isSuccess)
         assertEquals("203.0.113.20", result.getOrNull())
-        assertTrue(observedBindings.first() is ResolverBinding.AndroidNetworkBinding)
-        val fallbackIndex = observedBindings.indexOfFirst { it is ResolverBinding.OsDeviceBinding }
-        assertTrue(fallbackIndex > 0)
-        assertTrue(observedBindings.take(fallbackIndex).all { it is ResolverBinding.AndroidNetworkBinding })
-        val fallbackBinding = observedBindings[fallbackIndex] as ResolverBinding.OsDeviceBinding
-        assertEquals("tun0", fallbackBinding.interfaceName)
-        assertEquals(ResolverBinding.DnsMode.SYSTEM, fallbackBinding.dnsMode)
+        assertEquals("strict:AndroidNetworkBinding", events.first())
+        assertTrue(events.any { it == "native:tun0" })
     }
 
     @Test
@@ -59,9 +68,12 @@ class IfconfigClientTest {
         PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
-                is ResolverBinding.OsDeviceBinding -> Result.failure(IOException("device path failed"))
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        NativeCurlBridge.executeOverride = {
+            NativeCurlResponse(localError = "device path failed")
         }
 
         val result = kotlinx.coroutines.runBlocking {
@@ -84,14 +96,19 @@ class IfconfigClientTest {
 
     @Test
     fun `network comparison marks dns path mismatch when curl compatible succeeds after strict failure`() {
-        val observedBindings = mutableListOf<ResolverBinding?>()
         PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
-            observedBindings += binding
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("strict failed"))
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.21")
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        NativeCurlBridge.executeOverride = {
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.21",
+            )
         }
 
         val comparison = kotlinx.coroutines.runBlocking {
@@ -113,20 +130,26 @@ class IfconfigClientTest {
         assertTrue(comparison.dnsPathMismatch)
         assertFalse(comparison.strict.endpointAttempts.isEmpty())
         assertFalse(comparison.curlCompatible.endpointAttempts.isEmpty())
-        assertTrue(observedBindings.any { it is ResolverBinding.AndroidNetworkBinding })
-        assertTrue(observedBindings.any { it is ResolverBinding.OsDeviceBinding })
+        assertEquals(TunProbeEngine.NATIVE_LIBCURL, comparison.curlCompatible.transportDiagnostics.engine)
     }
 
     @Test
     fun `network comparison still runs curl compatible branch after strict success`() {
-        val observedBindings = mutableListOf<ResolverBinding?>()
+        var nativeCalls = 0
         PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
-            observedBindings += binding
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.success("198.51.100.10")
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.22")
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        NativeCurlBridge.executeOverride = {
+            nativeCalls++
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.22",
+            )
         }
 
         val comparison = kotlinx.coroutines.runBlocking {
@@ -144,8 +167,7 @@ class IfconfigClientTest {
         assertEquals(PublicIpProbeMode.STRICT_SAME_PATH, comparison.selectedMode)
         assertEquals("198.51.100.10", comparison.selectedIp)
         assertEquals(PublicIpProbeStatus.SUCCEEDED, comparison.curlCompatible.status)
-        assertTrue(observedBindings.any { it is ResolverBinding.AndroidNetworkBinding })
-        assertTrue(observedBindings.any { it is ResolverBinding.OsDeviceBinding })
+        assertEquals(1, nativeCalls)
     }
 
     @Test
@@ -180,14 +202,21 @@ class IfconfigClientTest {
 
     @Test
     fun `curl compatible override skips strict branch`() {
-        val observedBindings = mutableListOf<ResolverBinding?>()
+        val strictCalls = mutableListOf<ResolverBinding?>()
         PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
-            observedBindings += binding
+            strictCalls += binding
             when (binding) {
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.32")
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("strict should not run"))
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        NativeCurlBridge.executeOverride = {
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.32",
+            )
         }
 
         val comparison = kotlinx.coroutines.runBlocking {
@@ -205,7 +234,7 @@ class IfconfigClientTest {
         assertEquals(PublicIpProbeMode.CURL_COMPATIBLE, comparison.selectedMode)
         assertEquals(PublicIpProbeStatus.SKIPPED, comparison.strict.status)
         assertEquals("Disabled by override", comparison.strict.error)
-        assertTrue(observedBindings.all { it is ResolverBinding.OsDeviceBinding })
+        assertTrue(strictCalls.isEmpty())
     }
 
     @Test
@@ -252,6 +281,58 @@ class IfconfigClientTest {
         assertEquals("strict failed; OS device bind fallback is unavailable because interfaceName is missing", comparison.selectedError)
         assertEquals(null, comparison.selectedMode)
         assertFalse(comparison.dnsPathMismatch)
+    }
+
+    @Test
+    fun `curl compatible uses injected resolve for direct resolver`() {
+        var observedBinding: ResolverBinding? = null
+        PublicIpClient.fetchIpOverride = { _, _, _, _, binding ->
+            when (binding) {
+                is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("strict failed"))
+                else -> Result.failure(IOException("unexpected binding"))
+            }
+        }
+        ResolverNetworkStack.dnsFactoryOverride = { _, binding ->
+            observedBinding = binding
+            object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> {
+                    if (hostname == "ifconfig.me") {
+                        return listOf(InetAddress.getByName("93.184.216.34"))
+                    }
+                    throw java.net.UnknownHostException(hostname)
+                }
+            }
+        }
+        NativeCurlBridge.executeOverride = { request ->
+            assertEquals(1, request.resolveRules.size)
+            assertEquals("ifconfig.me", request.resolveRules.single().host)
+            assertTrue(request.resolveRules.single().addresses.isNotEmpty())
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.45",
+                resolvedAddressesUsed = request.resolveRules.single().addresses,
+            )
+        }
+
+        val comparison = kotlinx.coroutines.runBlocking {
+            IfconfigClient.fetchIpViaNetworkComparison(
+                primaryBinding = ResolverBinding.AndroidNetworkBinding(newNetwork(210)),
+                fallbackBinding = ResolverBinding.OsDeviceBinding(
+                    interfaceName = "tun0",
+                    dnsMode = ResolverBinding.DnsMode.SYSTEM,
+                ),
+                resolverConfig = DnsResolverConfig(
+                    mode = com.notcvnt.rknhardering.network.DnsResolverMode.DIRECT,
+                    customDirectServers = listOf("1.1.1.1"),
+                ),
+            )
+        }
+
+        assertEquals(PublicIpProbeMode.CURL_COMPATIBLE, comparison.selectedMode)
+        assertEquals(TunProbeResolveStrategy.KOTLIN_INJECTED, comparison.curlCompatible.transportDiagnostics.resolveStrategy)
+        assertTrue(observedBinding is ResolverBinding.OsDeviceBinding)
+        assertEquals("tun0", (observedBinding as ResolverBinding.OsDeviceBinding).interfaceName)
     }
 
     @Test

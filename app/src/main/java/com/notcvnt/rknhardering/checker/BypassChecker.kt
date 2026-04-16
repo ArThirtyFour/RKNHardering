@@ -28,6 +28,7 @@ import com.notcvnt.rknhardering.probe.ProxyScanner
 import com.notcvnt.rknhardering.probe.ProxyType
 import com.notcvnt.rknhardering.probe.ScanMode
 import com.notcvnt.rknhardering.probe.ScanPhase
+import com.notcvnt.rknhardering.probe.TunProbeResolveStrategy
 import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import com.notcvnt.rknhardering.probe.XrayApiScanResult
 import com.notcvnt.rknhardering.probe.XrayApiScanner
@@ -803,24 +804,35 @@ object BypassChecker {
         findings: MutableList<Finding>,
     ): Boolean {
         val pathLabels = mutableListOf<String>()
+        var usesInjectedResolve = false
         if (
             result.vpnIp != null &&
             result.vpnIpComparison?.usedCurlCompatibleFallback() == true
         ) {
             pathLabels += context.getString(R.string.checker_bypass_transport_only_vpn_path)
+            usesInjectedResolve = usesInjectedResolve ||
+                result.vpnIpComparison.curlCompatible.transportDiagnostics.resolveStrategy ==
+                TunProbeResolveStrategy.KOTLIN_INJECTED
         }
         if (
             result.underlyingIp != null &&
             result.underlyingIpComparison?.usedCurlCompatibleFallback() == true
         ) {
             pathLabels += context.getString(R.string.checker_bypass_transport_only_underlying_path)
+            usesInjectedResolve = usesInjectedResolve ||
+                result.underlyingIpComparison.curlCompatible.transportDiagnostics.resolveStrategy ==
+                TunProbeResolveStrategy.KOTLIN_INJECTED
         }
         if (pathLabels.isEmpty()) return false
 
         findings.add(
             Finding(
                 description = context.getString(
-                    R.string.checker_bypass_transport_only_used,
+                    if (usesInjectedResolve) {
+                        R.string.checker_bypass_curl_compatible_used
+                    } else {
+                        R.string.checker_bypass_transport_only_used
+                    },
                     pathLabels.joinToString(", "),
                 ),
                 isInformational = true,

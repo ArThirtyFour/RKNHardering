@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+val nativeNdkVersion = "28.2.13676358"
+val nativeCmakeVersion = "3.22.1"
+
 val appVersionName = resolveAppVersionName()
 val appVersionCode = calculateAppVersionCode(appVersionName)
 
@@ -35,6 +38,7 @@ fun calculateAppVersionCode(versionName: String): Int {
 
 android {
     namespace = "com.notcvnt.rknhardering"
+    ndkVersion = nativeNdkVersion
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -50,6 +54,16 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         androidResources.localeFilters += listOf("en", "ru", "fa", "zh-rCN")
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_static")
+            }
+        }
     }
 
     buildTypes {
@@ -67,6 +81,17 @@ android {
     }
     buildFeatures {
         buildConfig = true
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = nativeCmakeVersion
+        }
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true

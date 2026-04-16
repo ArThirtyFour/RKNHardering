@@ -5,11 +5,14 @@ import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.network.DnsResolverMode
 import com.notcvnt.rknhardering.probe.PublicIpProbeMode
 import com.notcvnt.rknhardering.probe.PublicIpProbeStatus
+import com.notcvnt.rknhardering.probe.PublicIpTransportDiagnostics
 import com.notcvnt.rknhardering.probe.TunEndpointAttempt
 import com.notcvnt.rknhardering.probe.TunProbeAttemptDiagnostics
 import com.notcvnt.rknhardering.probe.TunProbeDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeEngine
 import com.notcvnt.rknhardering.probe.TunProbeModeOverride
 import com.notcvnt.rknhardering.probe.TunProbePathDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeResolveStrategy
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,6 +50,15 @@ class TunProbeDiagnosticsFormatterTest {
                     mode = PublicIpProbeMode.CURL_COMPATIBLE,
                     status = PublicIpProbeStatus.SUCCEEDED,
                     ip = "203.0.113.64",
+                    transportDiagnostics = PublicIpTransportDiagnostics(
+                        engine = TunProbeEngine.NATIVE_LIBCURL,
+                        resolveStrategy = TunProbeResolveStrategy.KOTLIN_INJECTED,
+                        curlCode = 0,
+                        httpCode = 200,
+                        nativeLibraryLoaded = true,
+                        caBundleVersion = "cafebabe",
+                        resolvedAddressesUsed = listOf("203.0.113.10"),
+                    ),
                 ),
             ),
             underlyingPath = TunProbePathDiagnostics(
@@ -84,5 +96,9 @@ class TunProbeDiagnosticsFormatterTest {
         assertFalse(report.contains("203.0.113.64"))
         assertTrue(report.contains("192.168.1.55"))
         assertTrue(report.contains("timestamp: 1970-01-01T"))
+        assertTrue(report.contains("curl-compatible.engine: native-libcurl"))
+        assertTrue(report.contains("curl-compatible.resolveStrategy: kotlin-injected"))
+        assertTrue(report.contains("curl-compatible.caBundleVersion: cafebabe"))
+        assertTrue(report.contains("curl-compatible.resolvedAddresses: 203.0.*.*"))
     }
 }

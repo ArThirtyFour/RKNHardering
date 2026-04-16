@@ -13,6 +13,8 @@ import com.notcvnt.rknhardering.model.LocalProxyOwner
 import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.network.ResolverBinding
 import com.notcvnt.rknhardering.probe.LocalSocketListener
+import com.notcvnt.rknhardering.probe.NativeCurlBridge
+import com.notcvnt.rknhardering.probe.NativeCurlResponse
 import com.notcvnt.rknhardering.probe.ProxyEndpoint
 import com.notcvnt.rknhardering.probe.ProxyType
 import com.notcvnt.rknhardering.probe.PublicIpClient
@@ -37,6 +39,7 @@ class CallTransportCheckerTest {
     fun tearDown() {
         CallTransportChecker.dependenciesOverride = null
         PublicIpClient.resetForTests()
+        NativeCurlBridge.resetForTests()
     }
 
     @Test
@@ -298,9 +301,18 @@ class CallTransportCheckerTest {
             observedBindings += binding
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.10")
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        val observedInterfaces = mutableListOf<String>()
+        NativeCurlBridge.executeOverride = { request ->
+            observedInterfaces += request.interfaceName
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.10",
+            )
         }
         CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
             loadCatalog = { _, _ -> catalogWithTelegramTarget() },
@@ -321,9 +333,7 @@ class CallTransportCheckerTest {
         val telegram = results.first { it.service == CallTransportService.TELEGRAM }
         assertEquals(CallTransportStatus.NEEDS_REVIEW, telegram.status)
         assertTrue(observedBindings.any { it is ResolverBinding.AndroidNetworkBinding })
-        val fallbackBinding = observedBindings.last { it is ResolverBinding.OsDeviceBinding } as ResolverBinding.OsDeviceBinding
-        assertEquals("tun0", fallbackBinding.interfaceName)
-        assertEquals(ResolverBinding.DnsMode.SYSTEM, fallbackBinding.dnsMode)
+        assertEquals(listOf("tun0"), observedInterfaces)
     }
 
     @Test
@@ -333,9 +343,18 @@ class CallTransportCheckerTest {
             observedBindings += binding
             when (binding) {
                 is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
-                is ResolverBinding.OsDeviceBinding -> Result.success("203.0.113.10")
                 null -> Result.failure(IOException("unexpected unbound path"))
+                else -> Result.failure(IOException("unexpected binding"))
             }
+        }
+        val observedInterfaces = mutableListOf<String>()
+        NativeCurlBridge.executeOverride = { request ->
+            observedInterfaces += request.interfaceName
+            NativeCurlResponse(
+                curlCode = 0,
+                httpCode = 200,
+                body = "203.0.113.10",
+            )
         }
         CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
             loadCatalog = { _, _ -> catalogWithTelegramTarget() },
@@ -355,9 +374,8 @@ class CallTransportCheckerTest {
 
         val telegram = results.first { it.service == CallTransportService.TELEGRAM }
         assertEquals(CallTransportStatus.NEEDS_REVIEW, telegram.status)
-        val fallbackBinding = observedBindings.last { it is ResolverBinding.OsDeviceBinding } as ResolverBinding.OsDeviceBinding
-        assertEquals("wlan0", fallbackBinding.interfaceName)
-        assertEquals(ResolverBinding.DnsMode.SYSTEM, fallbackBinding.dnsMode)
+        assertTrue(observedBindings.any { it is ResolverBinding.AndroidNetworkBinding })
+        assertEquals(listOf("wlan0"), observedInterfaces)
     }
 
     @Test

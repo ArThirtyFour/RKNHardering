@@ -5,11 +5,14 @@ import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.network.DnsResolverMode
 import com.notcvnt.rknhardering.probe.PublicIpProbeMode
 import com.notcvnt.rknhardering.probe.PublicIpProbeStatus
+import com.notcvnt.rknhardering.probe.PublicIpTransportDiagnostics
 import com.notcvnt.rknhardering.probe.TunEndpointAttempt
 import com.notcvnt.rknhardering.probe.TunProbeAttemptDiagnostics
 import com.notcvnt.rknhardering.probe.TunProbeDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeEngine
 import com.notcvnt.rknhardering.probe.TunProbeModeOverride
 import com.notcvnt.rknhardering.probe.TunProbePathDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeResolveStrategy
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,7 +55,7 @@ object TunProbeDiagnosticsFormatter {
         modeOverride: TunProbeModeOverride,
         path: TunProbePathDiagnostics,
     ): String {
-        return context.getString(
+        val summary = context.getString(
             R.string.checker_tun_probe_debug_summary,
             pathLabel,
             effectiveModeLabel(context, modeOverride, path),
@@ -61,6 +64,12 @@ object TunProbeDiagnosticsFormatter {
             statusLabel(context, path.curlCompatible.status),
             path.dnsPathMismatch.toString(),
         )
+        val diagnostics = path.curlCompatible.transportDiagnostics
+        return if (diagnostics.engine == null && diagnostics.resolveStrategy == null) {
+            summary
+        } else {
+            "$summary, curlEngine ${engineLabel(diagnostics.engine)}, curlResolve ${resolveStrategyLabel(diagnostics.resolveStrategy)}"
+        }
     }
 
     fun effectiveModeLabel(
@@ -121,6 +130,7 @@ object TunProbeDiagnosticsFormatter {
         builder.appendLine("$label.status: ${attempt.status}")
         builder.appendLine("$label.ip: ${attempt.ip?.let(::maskIp) ?: "<none>"}")
         builder.appendLine("$label.error: ${attempt.error?.let(::maskIpsInText) ?: "<none>"}")
+        appendTransportDiagnostics(builder, label, attempt.transportDiagnostics)
         builder.appendLine("$label.endpoints:")
         if (attempt.endpointAttempts.isEmpty()) {
             builder.appendLine("- <none>")
@@ -139,6 +149,46 @@ object TunProbeDiagnosticsFormatter {
             PublicIpProbeStatus.SKIPPED -> "error=${attempt.error?.let(::maskIpsInText) ?: "<none>"}"
         }
         return "${attempt.endpoint} [${attempt.familyHint}] -> ${attempt.status} ($result)"
+    }
+
+    private fun appendTransportDiagnostics(
+        builder: StringBuilder,
+        label: String,
+        diagnostics: PublicIpTransportDiagnostics,
+    ) {
+        diagnostics.engine?.let {
+            builder.appendLine("$label.engine: ${engineLabel(it)}")
+        }
+        diagnostics.resolveStrategy?.let {
+            builder.appendLine("$label.resolveStrategy: ${resolveStrategyLabel(it)}")
+        }
+        diagnostics.curlCode?.let {
+            builder.appendLine("$label.curlCode: $it")
+        }
+        diagnostics.httpCode?.let {
+            builder.appendLine("$label.httpCode: $it")
+        }
+        diagnostics.nativeLibraryLoaded?.let {
+            builder.appendLine("$label.nativeLibraryLoaded: $it")
+        }
+        diagnostics.caBundleVersion?.let {
+            builder.appendLine("$label.caBundleVersion: $it")
+        }
+        if (diagnostics.resolvedAddressesUsed.isNotEmpty()) {
+            builder.appendLine(
+                "$label.resolvedAddresses: ${
+                    diagnostics.resolvedAddressesUsed.joinToString(", ") { maskIp(it) }
+                }",
+            )
+        }
+    }
+
+    private fun engineLabel(engine: TunProbeEngine?): String {
+        return engine?.debugName ?: "unknown"
+    }
+
+    private fun resolveStrategyLabel(strategy: TunProbeResolveStrategy?): String {
+        return strategy?.debugName ?: "unknown"
     }
 
     private fun describeResolver(settings: CheckSettings): String {

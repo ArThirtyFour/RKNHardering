@@ -26,6 +26,7 @@ data class TunProbeAttemptDiagnostics(
     val ip: String? = null,
     val error: String? = null,
     val endpointAttempts: List<TunEndpointAttempt> = emptyList(),
+    val transportDiagnostics: PublicIpTransportDiagnostics = PublicIpTransportDiagnostics(),
 )
 
 data class TunProbePathDiagnostics(

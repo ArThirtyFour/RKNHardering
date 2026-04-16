@@ -87,9 +87,14 @@
     <string name="main_card_call_transport_status_needs_review">نیاز به بررسی</string>
     <string name="main_card_call_transport_status_unsupported">پشتیبانی نمی‌شود</string>
     <string name="main_card_call_transport_status_error">خطا</string>
+    <string name="main_card_call_transport_status_baseline">پاسخ داد</string>
     <string name="main_card_call_transport_path_active">شبکه فعال</string>
     <string name="main_card_call_transport_path_underlying">شبکه زیرین</string>
     <string name="main_card_call_transport_path_proxy">پروکسی محلی</string>
+    <string name="main_card_call_transport_reason_no_response">هیچ پاسخی از STUN دریافت نشد</string>
+    <string name="main_card_call_transport_reason_telegram_dc_unreachable">Telegram DC از طریق پروکسی SOCKS5 محلی قابل دسترس نیست</string>
+    <string name="main_card_call_transport_reason_release_only">ردیابی WhatsApp فقط در بیلدهای debug یا experimental در دسترس است</string>
+    <string name="main_card_call_transport_reason_targets_unavailable">اهداف این بررسی در دسترس نیستند</string>
     <string name="main_card_location_signals">نشانه‌های مکان</string>
     <string name="main_verdict_details">جزئیات</string>
 
@@ -386,6 +391,9 @@
     <string name="checker_tun_probe_status_succeeded">succeeded</string>
     <string name="checker_tun_probe_status_failed">failed</string>
     <string name="checker_tun_probe_status_skipped">skipped</string>
+    <string name="checker_bypass_tun_probe_success_curl_compatible">کاوش فعال TUN: مسیر curl-compatible آی‌پی %1$s را برگرداند</string>
+    <string name="checker_bypass_tun_probe_dns_mismatch_curl_compatible">کاوش فعال TUN: strict same-path شکست خورد (%1$s)، اما مسیر curl-compatible موفق شد؛ احتمال mismatch در DNS-path زیاد است</string>
+    <string name="checker_bypass_curl_compatible_used">مقایسه split tunnel از fallback نوع curl-compatible برای این مسیرها استفاده کرد: %1$s</string>
 
     <string name="checker_vpn_known_apps_none">برنامه‌های شناخته‌شده VPN/Proxy و ارائه‌دهندگان VpnService: موردی پیدا نشد</string>
     <string name="checker_vpn_installed_app">برنامه نصب‌شده: %1$s (%2$s)</string>

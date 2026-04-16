@@ -183,7 +183,7 @@ class VerdictEngineTest {
     }
 
     @Test
-    fun `call transport leak does not affect verdict`() {
+    fun `direct call transport leak elevates clean verdict to needs review`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = category(),
@@ -207,7 +207,7 @@ class VerdictEngineTest {
             bypassResult = bypass(),
         )
 
-        assertEquals(Verdict.NOT_DETECTED, verdict)
+        assertEquals(Verdict.NEEDS_REVIEW, verdict)
     }
 
     @Test

@@ -50,6 +50,7 @@ object UnderlyingNetworkProber {
         debugEnabled: Boolean = false,
         modeOverride: TunProbeModeOverride = TunProbeModeOverride.AUTO,
     ): ProbeResult = withContext(Dispatchers.IO) {
+        NativeCurlBridge.initIfNeeded(context)
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork = cm.activeNetwork
         val activeNetworkIsVpn = activeNetwork

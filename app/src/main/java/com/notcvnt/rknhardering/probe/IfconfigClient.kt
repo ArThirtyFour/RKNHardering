@@ -221,6 +221,16 @@ object IfconfigClient {
         binding: ResolverBinding,
         collectTrace: Boolean = false,
     ): PublicIpModeProbeResult {
+        if (mode == PublicIpProbeMode.CURL_COMPATIBLE && binding is ResolverBinding.OsDeviceBinding) {
+            return NativeCurlTransportProbe.fetchModeProbeResult(
+                mode = mode,
+                endpoints = ENDPOINTS,
+                timeoutMs = timeoutMs,
+                resolverConfig = resolverConfig,
+                binding = binding,
+                collectTrace = collectTrace,
+            )
+        }
         val endpointAttempts = if (collectTrace) mutableListOf<TunEndpointAttempt>() else null
         val result = fetchIpForBinding(
             timeoutMs = timeoutMs,

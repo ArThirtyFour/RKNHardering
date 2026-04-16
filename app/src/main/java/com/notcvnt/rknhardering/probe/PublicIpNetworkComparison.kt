@@ -2,6 +2,27 @@ package com.notcvnt.rknhardering.probe
 
 import java.io.IOException
 
+enum class TunProbeEngine(val debugName: String) {
+    LEGACY_JAVA("legacy-java"),
+    NATIVE_LIBCURL("native-libcurl"),
+}
+
+enum class TunProbeResolveStrategy(val debugName: String) {
+    LEGACY_STACK("legacy-stack"),
+    NATIVE_DEFAULT("native-default"),
+    KOTLIN_INJECTED("kotlin-injected"),
+}
+
+data class PublicIpTransportDiagnostics(
+    val engine: TunProbeEngine? = null,
+    val resolveStrategy: TunProbeResolveStrategy? = null,
+    val curlCode: Int? = null,
+    val httpCode: Int? = null,
+    val nativeLibraryLoaded: Boolean? = null,
+    val caBundleVersion: String? = null,
+    val resolvedAddressesUsed: List<String> = emptyList(),
+)
+
 enum class PublicIpProbeMode {
     STRICT_SAME_PATH,
     CURL_COMPATIBLE,
@@ -19,6 +40,7 @@ data class PublicIpModeProbeResult(
     val ip: String? = null,
     val error: String? = null,
     val endpointAttempts: List<TunEndpointAttempt> = emptyList(),
+    val transportDiagnostics: PublicIpTransportDiagnostics = PublicIpTransportDiagnostics(),
 )
 
 data class PublicIpNetworkComparison(
@@ -52,6 +74,7 @@ data class PublicIpNetworkComparison(
                 ip = strict.ip,
                 error = strict.error,
                 endpointAttempts = strict.endpointAttempts,
+                transportDiagnostics = strict.transportDiagnostics,
             ),
             curlCompatible = TunProbeAttemptDiagnostics(
                 mode = curlCompatible.mode,
@@ -59,6 +82,7 @@ data class PublicIpNetworkComparison(
                 ip = curlCompatible.ip,
                 error = curlCompatible.error,
                 endpointAttempts = curlCompatible.endpointAttempts,
+                transportDiagnostics = curlCompatible.transportDiagnostics,
             ),
         )
     }

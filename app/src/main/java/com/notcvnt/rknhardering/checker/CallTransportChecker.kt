@@ -22,6 +22,7 @@ import com.notcvnt.rknhardering.probe.IfconfigClient
 import com.notcvnt.rknhardering.probe.LocalSocketInspector
 import com.notcvnt.rknhardering.probe.LocalSocketListener
 import com.notcvnt.rknhardering.probe.MtProtoProber
+import com.notcvnt.rknhardering.probe.NativeCurlBridge
 import com.notcvnt.rknhardering.probe.ProxyEndpoint
 import com.notcvnt.rknhardering.probe.ProxyScanner
 import com.notcvnt.rknhardering.probe.ProxyType
@@ -122,6 +123,7 @@ object CallTransportChecker {
         if (!callTransportEnabled) {
             return@withContext Evaluation()
         }
+        NativeCurlBridge.initIfNeeded(context)
 
         val dependencies = dependenciesOverride ?: Dependencies()
         val results = mutableListOf<CallTransportLeakResult>()
@@ -716,9 +718,9 @@ object CallTransportChecker {
                         confidence = result.confidence,
                     )
                 }
+                CallTransportStatus.BASELINE,
                 CallTransportStatus.NO_SIGNAL,
                 CallTransportStatus.UNSUPPORTED,
-                CallTransportStatus.BASELINE,
                 -> Unit
             }
         }
