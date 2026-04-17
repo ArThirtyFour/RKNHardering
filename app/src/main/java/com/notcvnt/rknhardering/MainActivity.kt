@@ -1447,7 +1447,7 @@ class MainActivity : AppCompatActivity() {
 
         if (infoSection != null && infoDivider != null) {
             val infoFindings = category.findings.filter { it.isInformational }
-            val checkFindings = category.findings.filterNot { it.isInformational }
+            val checkFindings = category.findings.filterNot { it.isInformational || it.isError }
 
             bindInfoSection(infoFindings, infoSection, infoDivider, checkFindings.isNotEmpty(), privacyMode)
             findingsContainer.removeAllViews()
@@ -1460,6 +1460,7 @@ class MainActivity : AppCompatActivity() {
 
         findingsContainer.removeAllViews()
         for (finding in category.findings) {
+            if (finding.isError) continue
             if (finding.description.startsWith("network_mcc_ru:")) continue
             findingsContainer.addView(createFindingView(finding, privacyMode))
         }
@@ -1769,28 +1770,6 @@ class MainActivity : AppCompatActivity() {
         container.addView(topRow)
         container.addView(url)
 
-        if (!response.error.isNullOrBlank()) {
-            container.addView(
-                TextView(themedContext()).apply {
-                    text = buildString {
-                        if (response.ignoredIpv6Error) {
-                            append(getString(R.string.main_ipv6_error_ignored))
-                        }
-                        append(response.error)
-                    }.let { if (privacyMode) maskIpsInText(it) else it }
-                    textSize = 12f
-                    setPadding(0, 2.dp, 0, 0)
-                    setTextColor(
-                        if (response.ignoredIpv6Error) {
-                            onSurfaceVariantColor()
-                        } else {
-                            ContextCompat.getColor(themedContext(), R.color.status_amber)
-                        },
-                    )
-                },
-            )
-        }
-
         return container
     }
 
@@ -1813,8 +1792,14 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
 
+        val hasDualStack = response.ipv4 != null && response.ipv6 != null
+        val hasIpv6Only = response.ipv6 != null && response.ipv4 == null
+        val primaryDisplayIp = response.ip
+
         val valueText = when {
-            response.ip != null -> if (privacyMode) maskIp(response.ip) else response.ip
+            hasDualStack -> if (privacyMode) maskIp(response.ipv4!!) else response.ipv4!!
+            hasIpv6Only && response.ipv4Unavailable -> if (privacyMode) maskIp(response.ipv6!!) else response.ipv6!!
+            primaryDisplayIp != null -> if (privacyMode) maskIp(primaryDisplayIp) else primaryDisplayIp
             response.importantFields.isNotEmpty() -> getString(R.string.main_card_status_detected)
             response.error != null -> getString(R.string.main_card_status_error)
             else -> getString(R.string.main_card_status_clean)
@@ -1827,7 +1812,7 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getColor(
                     themedContext(),
                     when {
-                        response.ip != null -> R.color.status_red
+                        primaryDisplayIp != null -> R.color.status_red
                         response.error != null -> R.color.status_amber
                         else -> R.color.status_green
                     },
@@ -1845,6 +1830,29 @@ class MainActivity : AppCompatActivity() {
         topRow.addView(label)
         topRow.addView(value)
         container.addView(topRow)
+
+        if (hasDualStack) {
+            container.addView(
+                TextView(themedContext()).apply {
+                    text = if (privacyMode) maskIp(response.ipv6!!) else response.ipv6!!
+                    textSize = 13f
+                    typeface = Typeface.MONOSPACE
+                    setPadding(0, 2.dp, 0, 0)
+                    setTextColor(ContextCompat.getColor(themedContext(), R.color.status_red))
+                },
+            )
+        } else if (response.ipv4Unavailable && response.ipv6 != null) {
+            container.addView(
+                TextView(themedContext()).apply {
+                    text = "IPv4: n/a"
+                    textSize = 12f
+                    typeface = Typeface.MONOSPACE
+                    setPadding(0, 2.dp, 0, 0)
+                    setTextColor(onSurfaceVariantColor())
+                },
+            )
+        }
+
         container.addView(url)
 
         response.importantFields.forEach { (fieldLabel, fieldValue) ->
@@ -1854,17 +1862,6 @@ class MainActivity : AppCompatActivity() {
                     fieldLabel,
                     maskInfoValue(fieldValue, privacyMode),
                 ),
-            )
-        }
-
-        if (!response.error.isNullOrBlank()) {
-            container.addView(
-                TextView(themedContext()).apply {
-                    text = maskInfoValue(response.error, privacyMode)
-                    textSize = 12f
-                    setPadding(0, 2.dp, 0, 0)
-                    setTextColor(ContextCompat.getColor(themedContext(), R.color.status_amber))
-                },
             )
         }
 
