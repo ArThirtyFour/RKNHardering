@@ -513,6 +513,7 @@ class IndirectSignsCheckerTest {
 
         assertTrue(result.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW })
         assertTrue(result.needsReview)
+        assertTrue(result.stunProbeGroups.any { group -> group.results.any { it.hasResponse } })
         assertTrue(result.evidence.any { it.source == EvidenceSource.TELEGRAM_CALL_TRANSPORT && it.detected })
         val diagnostics = IndirectCheckPerformanceRegistry.find(result)
         assertTrue(diagnostics != null)

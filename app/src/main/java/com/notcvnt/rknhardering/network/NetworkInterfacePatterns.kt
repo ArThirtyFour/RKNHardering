@@ -17,6 +17,7 @@ object NetworkInterfacePatterns {
         Regex("^lo$"),
         Regex("^ccmni.*"),
         Regex("^ccemni.*"),
+        Regex("^dummy\\d+"),
     )
 
     fun isVpnInterface(name: String?): Boolean {

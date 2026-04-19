@@ -205,6 +205,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textCheckStatus: TextView
     private lateinit var viewModel: CheckViewModel
     private var processedEventCount = 0
+    private var processedEventScanId: Long? = null
     private lateinit var cardGeoIp: MaterialCardView
     private lateinit var cardIpComparison: MaterialCardView
     private lateinit var cardCdnPulling: MaterialCardView
@@ -898,26 +899,32 @@ class MainActivity : AppCompatActivity() {
     private fun observeScanEvents() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.scanEvents.collect { events ->
+                viewModel.scanEvents.collect { timeline ->
+                    val events = timeline.events
                     if (events.isEmpty()) return@collect
 
-                    val firstEvent = events.first()
-                    val isNewScan = firstEvent is ScanEvent.Started &&
-                        (processedEventCount == 0 || events.size <= processedEventCount)
+                    val isNewScan = timeline.scanId != processedEventScanId
                     if (isNewScan) {
+                        processedEventScanId = timeline.scanId
+                        processedEventCount = 0
+                    }
+                    if (processedEventCount >= events.size) return@collect
+
+                    if (processedEventCount == 0) {
+                        val firstEvent = events.firstOrNull() as? ScanEvent.Started ?: return@collect
                         prepareCheckSessionUi(
-                            (firstEvent as ScanEvent.Started).settings,
+                            firstEvent.settings,
                             firstEvent.privacyMode,
                         )
                         processedEventCount = 1
-                        events.drop(1).forEach { event ->
-                            applyScanEvent(event, animate = false)
-                            processedEventCount++
+                        while (processedEventCount < events.size) {
+                            applyScanEvent(events[processedEventCount], animate = false)
+                            processedEventCount += 1
                         }
-                    } else if (events.size > processedEventCount) {
-                        events.drop(processedEventCount).forEach { event ->
-                            applyScanEvent(event, animate = true)
-                            processedEventCount++
+                    } else {
+                        while (processedEventCount < events.size) {
+                            applyScanEvent(events[processedEventCount], animate = true)
+                            processedEventCount += 1
                         }
                     }
                 }

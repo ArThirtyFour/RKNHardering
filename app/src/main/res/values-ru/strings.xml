@@ -49,7 +49,7 @@
     <string name="settings_port_full">Полный</string>
     <string name="settings_port_custom">Кастомный</string>
     <string name="settings_network_requests">Сетевые запросы</string>
-    <string name="settings_network_requests_desc">GeoIP, IP сравнение, CDN pulling, BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP, IP сравнение, CDN pulling, BeaconDB, проверка call transport</string>
     <string name="settings_network_disable_title">Отключить сетевые запросы?</string>
     <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Проверка CDN pulling отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n• Проверка утечек call transport отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
     <string name="settings_network_disable_confirm">Отключить</string>
@@ -110,6 +110,7 @@
     <string name="main_subtitle">Самопроверка на обнаружение VPN/Proxy</string>
     <string name="main_run_check">Запустить проверку</string>
     <string name="main_stop_check">Остановить</string>
+    <string name="main_card_geo_ip" translatable="false">GeoIP</string>
     <string name="main_card_ip_comparison">Сравнение IP</string>
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">Прямые признаки</string>
@@ -155,6 +156,7 @@
 
     <string name="main_loading_status_scanning">Сканирование</string>
     <string name="main_loading_status_checking">Проверяется</string>
+    <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
     <string name="main_loading_geo_ip">Сверяем страну, ASN и признаки хостинга.</string>
     <string name="main_loading_ip_comparison">Сравниваем внешний IP через несколько независимых сервисов.</string>
@@ -189,6 +191,8 @@
     <string name="settings_port_range_preview_proxy_only">Будут сканироваться localhost-порты для proxy: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_xray_only">Будут сканироваться localhost-порты для Xray API: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_disabled">Локальные сканы proxy и Xray отключены.</string>
+    <string name="settings_port_range_start_default" translatable="false">1024</string>
+    <string name="settings_port_range_end_default" translatable="false">65535</string>
     <plurals name="settings_port_word">
         <item quantity="one">%1$s порт</item>
         <item quantity="few">%1$s порта</item>
@@ -482,8 +486,8 @@
     <string name="tile_hint_error">Ошибка</string>
 
     <!-- NativeSignsChecker -->
-    <string name="checker_native_category_name">Нативные признаки</string>
-    <string name="checker_native_card_title">Нативные низкоуровневые проверки</string>
+    <string name="checker_native_category_name">Нативные признаки β</string>
+    <string name="checker_native_card_title">Нативные низкоуровневые проверки β</string>
     <string name="checker_native_unavailable">Нативная библиотека не загружена; проверки недоступны.</string>
     <string name="checker_native_unavailable_with_reason">Нативная библиотека не загружена: %1$s</string>
     <string name="checker_native_no_anomalies">Нативные сигналы: аномалий не обнаружено</string>
@@ -504,4 +508,17 @@
     <string name="checker_native_symbols_clean">Символы libc разрешаются корректно</string>
     <string name="checker_native_symbol_missing">dlsym %1$s: не найден</string>
     <string name="checker_native_symbol_foreign_library">dlsym %1$s указывает на чужую библиотеку: %2$s</string>
+
+    <!-- NativeSignsChecker: root detection -->
+    <string name="checker_native_root_clean">Root-индикаторы: признаков root-доступа не обнаружено</string>
+    <string name="checker_native_root_su_binary">Найден бинарник su: %1$s</string>
+    <string name="checker_native_root_property">Подозрительное системное свойство: %1$s</string>
+    <string name="checker_native_root_mgmt_artifact">Артефакт root-менеджера: %1$s</string>
+    <string name="checker_native_root_system_rw">Раздел /system доступен на запись</string>
+    <string name="checker_native_root_suspicious_mount">Подозрительная запись монтирования: %1$s</string>
+    <string name="checker_native_root_overlay_mount">Overlay-монтирование на системном разделе: %1$s</string>
+    <string name="checker_native_root_selinux_permissive">SELinux в режиме permissive</string>
+    <string name="checker_native_root_selinux_absent">Статус SELinux enforcement недоступен</string>
+    <string name="checker_native_root_uid">Процесс выполняется с root UID: %1$s</string>
+    <string name="checker_native_root_magisk_prop">Обнаружено свойство Magisk: %1$s</string>
 </resources>

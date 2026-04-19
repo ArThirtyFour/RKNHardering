@@ -482,8 +482,8 @@
     <string name="tile_hint_error">Error</string>
 
     <!-- NativeSignsChecker -->
-    <string name="checker_native_category_name">Native signs</string>
-    <string name="checker_native_card_title">Native low-level checks</string>
+    <string name="checker_native_category_name">Native signs β</string>
+    <string name="checker_native_card_title">Native low-level checks β</string>
     <string name="checker_native_unavailable">Native library not loaded; native checks are unavailable.</string>
     <string name="checker_native_unavailable_with_reason">Native library not loaded: %1$s</string>
     <string name="checker_native_no_anomalies">Native signals: no anomalies detected</string>
@@ -504,4 +504,17 @@
     <string name="checker_native_symbols_clean">Library symbols: all resolve to libc</string>
     <string name="checker_native_symbol_missing">dlsym %1$s: missing</string>
     <string name="checker_native_symbol_foreign_library">dlsym %1$s resolves to foreign library: %2$s</string>
+
+    <!-- NativeSignsChecker: root detection -->
+    <string name="checker_native_root_clean">Root indicators: no signs of root access detected</string>
+    <string name="checker_native_root_su_binary">su binary found: %1$s</string>
+    <string name="checker_native_root_property">Suspicious system property: %1$s</string>
+    <string name="checker_native_root_mgmt_artifact">Root management artifact: %1$s</string>
+    <string name="checker_native_root_system_rw">/system partition is writable</string>
+    <string name="checker_native_root_suspicious_mount">Suspicious mount entry: %1$s</string>
+    <string name="checker_native_root_overlay_mount">Overlay mount on system partition: %1$s</string>
+    <string name="checker_native_root_selinux_permissive">SELinux is in permissive mode</string>
+    <string name="checker_native_root_selinux_absent">SELinux enforcement status is not accessible</string>
+    <string name="checker_native_root_uid">Process is running with root UID: %1$s</string>
+    <string name="checker_native_root_magisk_prop">Magisk property detected: %1$s</string>
 </resources>

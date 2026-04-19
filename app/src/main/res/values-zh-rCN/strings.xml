@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n如果启用了 CDN pulling，应用还会向 redirector.googlevideo.com、rutracker.org 和 meduza.io 发送 HTTPS 请求，以查看这些端点会返回什么公网 IP 和 trace 数据。\n\n如果启用了 Debug diagnostics，应用还可以基于最近一次已完成的检查生成可复制的诊断报告，即使这次检查成功完成也一样。该报告只保存在内存中，直到你复制它，并且也会包含 CDN pulling 的响应。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
+    <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n如果启用了 CDN pulling，应用还会向 redirector.googlevideo.com、rutracker.org 和 meduza.io 发送 HTTPS 请求，以查看这些端点会返回什么公网 IP 和 trace 数据。\n\n如果启用了 call transport 泄露检查，应用还会向内置的 Telegram 目标发送 UDP/STUN 请求。WhatsApp 目标只会在 debug 或 experimental build 中使用。\n\n如果启用了 Debug diagnostics，应用还可以基于最近一次已完成的检查生成可复制的诊断报告，即使这次检查成功完成也一样。该报告只保存在内存中，直到你复制它，并且也会包含 CDN pulling 的响应。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_section_checks">检查</string>
@@ -49,7 +49,7 @@
     <string name="settings_port_full">完整</string>
     <string name="settings_port_custom">自定义</string>
     <string name="settings_network_requests">网络请求</string>
-    <string name="settings_network_requests_desc">GeoIP、IP 比较、CDN pulling、BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP、IP 比较、CDN pulling、BeaconDB、call transport 检查</string>
     <string name="settings_network_disable_title">要禁用网络请求吗？</string>
     <string name="settings_network_disable_message">禁用后：\n\n• GeoIP 检查将不会运行\n• 通过外部服务进行的 IP 比较将被禁用\n• CDN pulling 检查将被禁用\n• 通过 BeaconDB（基站/Wi-Fi）进行的位置判断将被禁用\n• Call transport 泄露探测将被禁用\n\n届时只保留本地检查：直接迹象、间接迹象和端口扫描</string>
     <string name="settings_network_disable_confirm">禁用</string>
@@ -110,6 +110,7 @@
     <string name="main_subtitle">VPN/代理自检</string>
     <string name="main_run_check">运行检查</string>
     <string name="main_stop_check">停止</string>
+    <string name="main_card_geo_ip" translatable="false">GeoIP</string>
     <string name="main_card_ip_comparison">IP 比较</string>
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">直接迹象</string>
@@ -155,6 +156,7 @@
 
     <string name="main_loading_status_scanning">扫描中</string>
     <string name="main_loading_status_checking">检查中</string>
+    <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
     <string name="main_loading_geo_ip">正在检查国家、ASN 和托管迹象。</string>
     <string name="main_loading_ip_comparison">正在通过多个独立服务比较公网 IP。</string>
@@ -189,6 +191,8 @@
     <string name="settings_port_range_preview_proxy_only">将扫描用于代理的 localhost 端口：%1$s（%2$s）</string>
     <string name="settings_port_range_preview_xray_only">将扫描用于 Xray API 的 localhost 端口：%1$s（%2$s）</string>
     <string name="settings_port_range_preview_disabled">本地代理和 Xray 扫描已禁用。</string>
+    <string name="settings_port_range_start_default" translatable="false">1024</string>
+    <string name="settings_port_range_end_default" translatable="false">65535</string>
     <plurals name="settings_port_word">
         <item quantity="other">%1$s 个端口</item>
     </plurals>
@@ -462,8 +466,8 @@
     <string name="tile_hint_error">错误</string>
 
     <!-- NativeSignsChecker -->
-    <string name="checker_native_category_name">原生检查</string>
-    <string name="checker_native_card_title">原生底层检查</string>
+    <string name="checker_native_category_name">原生检查 β</string>
+    <string name="checker_native_card_title">原生底层检查 β</string>
     <string name="checker_native_unavailable">原生库未加载；无法执行原生检查。</string>
     <string name="checker_native_unavailable_with_reason">原生库未加载：%1$s</string>
     <string name="checker_native_no_anomalies">原生信号：未检测到异常</string>
@@ -484,4 +488,17 @@
     <string name="checker_native_symbols_clean">libc 符号解析正常</string>
     <string name="checker_native_symbol_missing">dlsym %1$s：未找到</string>
     <string name="checker_native_symbol_foreign_library">dlsym %1$s 指向外部库：%2$s</string>
+
+    <!-- NativeSignsChecker: root detection -->
+    <string name="checker_native_root_clean">Root 指标：未检测到 root 访问迹象</string>
+    <string name="checker_native_root_su_binary">发现 su 二进制文件：%1$s</string>
+    <string name="checker_native_root_property">可疑系统属性：%1$s</string>
+    <string name="checker_native_root_mgmt_artifact">Root 管理工具文件：%1$s</string>
+    <string name="checker_native_root_system_rw">/system 分区可写</string>
+    <string name="checker_native_root_suspicious_mount">可疑挂载项：%1$s</string>
+    <string name="checker_native_root_overlay_mount">系统分区上的 overlay 挂载：%1$s</string>
+    <string name="checker_native_root_selinux_permissive">SELinux 处于 permissive 模式</string>
+    <string name="checker_native_root_selinux_absent">SELinux 强制执行状态不可访问</string>
+    <string name="checker_native_root_uid">进程以 root UID 运行：%1$s</string>
+    <string name="checker_native_root_magisk_prop">检测到 Magisk 属性：%1$s</string>
 </resources>

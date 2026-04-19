@@ -39,6 +39,7 @@ enum class EvidenceSource {
     NATIVE_HOOK_MARKERS,
     NATIVE_JVM_MISMATCH,
     NATIVE_LIBRARY_INTEGRITY,
+    NATIVE_ROOT_DETECTION,
 }
 
 enum class StunScope {

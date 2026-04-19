@@ -12,6 +12,7 @@ import com.notcvnt.rknhardering.network.NetworkInterfacePatterns
 import com.notcvnt.rknhardering.probe.NativeInterface
 import com.notcvnt.rknhardering.probe.NativeInterfaceProbe
 import com.notcvnt.rknhardering.probe.NativeMapsFinding
+import com.notcvnt.rknhardering.probe.NativeRootFinding
 import com.notcvnt.rknhardering.probe.NativeRouteEntry
 import com.notcvnt.rknhardering.probe.NativeSignsBridge
 import com.notcvnt.rknhardering.probe.NativeSymbolInfo
@@ -97,6 +98,11 @@ object NativeSignsChecker {
         findings += integrityOutcome.findings
         evidence += integrityOutcome.evidence
         needsReview = needsReview || integrityOutcome.needsReview
+
+        val rootOutcome = evaluateRootIndicators(context)
+        findings += rootOutcome.findings
+        evidence += rootOutcome.evidence
+        needsReview = needsReview || rootOutcome.needsReview
 
         if (findings.isEmpty()) {
             findings += Finding(
@@ -334,7 +340,19 @@ object NativeSignsChecker {
         val evidence = mutableListOf<EvidenceItem>()
         var detected = false
 
-        val defaultRoutes = routes.filter { it.isDefault }
+        val defaultRoutes = routes.asSequence()
+            .filter { it.isDefault }
+            .distinctBy { route ->
+                val canonical = NetworkInterfaceNameNormalizer.canonicalName(route.interfaceName)
+                    ?: route.interfaceName
+                val familyBucket = when {
+                    route.family == 10 -> 6
+                    route.destinationHex.length > 8 -> 6
+                    else -> 4
+                }
+                "$canonical|$familyBucket"
+            }
+            .toList()
         if (defaultRoutes.isEmpty()) {
             findings += Finding(
                 description = context.getString(R.string.checker_native_routes_no_default),
@@ -362,7 +380,7 @@ object NativeSignsChecker {
                         source = EvidenceSource.NATIVE_ROUTE,
                         detected = true,
                         confidence = EvidenceConfidence.HIGH,
-                        description = "Native /proc/net/route default gateway on VPN interface $iface",
+                        description = "Native proc default route on VPN interface $iface",
                     )
                     detected = true
                 } else if (!isStandard) {
@@ -376,7 +394,7 @@ object NativeSignsChecker {
                         source = EvidenceSource.NATIVE_ROUTE,
                         detected = true,
                         confidence = EvidenceConfidence.MEDIUM,
-                        description = "Native /proc/net/route default gateway on non-standard interface $iface",
+                        description = "Native proc default route on non-standard interface $iface",
                     )
                     detected = true
                 } else {
@@ -525,6 +543,94 @@ object NativeSignsChecker {
             )
         }
         return result
+    }
+
+    internal fun evaluateRootIndicators(context: Context): PartialOutcome {
+        val rootFindings = runCatching { NativeInterfaceProbe.collectRootFindings() }.getOrDefault(emptyList())
+        if (rootFindings.isEmpty()) {
+            return PartialOutcome(
+                findings = listOf(
+                    Finding(
+                        description = context.getString(R.string.checker_native_root_clean),
+                        isInformational = true,
+                        source = EvidenceSource.NATIVE_ROOT_DETECTION,
+                    ),
+                ),
+                evidence = emptyList(),
+            )
+        }
+
+        val findings = mutableListOf<Finding>()
+        val evidence = mutableListOf<EvidenceItem>()
+        var needsReview = false
+
+        for (item in rootFindings) {
+            val detail = item.detail ?: "?"
+            val (description, confidence) = when (item.kind) {
+                "su_binary" -> Pair(
+                    context.getString(R.string.checker_native_root_su_binary, detail),
+                    EvidenceConfidence.HIGH,
+                )
+                "root_prop" -> Pair(
+                    context.getString(R.string.checker_native_root_property, detail),
+                    EvidenceConfidence.MEDIUM,
+                )
+                "root_mgmt" -> Pair(
+                    context.getString(R.string.checker_native_root_mgmt_artifact, detail),
+                    EvidenceConfidence.HIGH,
+                )
+                "system_rw" -> Pair(
+                    context.getString(R.string.checker_native_root_system_rw),
+                    EvidenceConfidence.HIGH,
+                )
+                "suspicious_mount" -> Pair(
+                    context.getString(R.string.checker_native_root_suspicious_mount, detail),
+                    EvidenceConfidence.MEDIUM,
+                )
+                "overlay_mount" -> Pair(
+                    context.getString(R.string.checker_native_root_overlay_mount, detail),
+                    EvidenceConfidence.MEDIUM,
+                )
+                "selinux" -> {
+                    if (detail == "permissive") {
+                        Pair(
+                            context.getString(R.string.checker_native_root_selinux_permissive),
+                            EvidenceConfidence.HIGH,
+                        )
+                    } else {
+                        Pair(
+                            context.getString(R.string.checker_native_root_selinux_absent),
+                            EvidenceConfidence.LOW,
+                        )
+                    }
+                }
+                "root_uid" -> Pair(
+                    context.getString(R.string.checker_native_root_uid, detail),
+                    EvidenceConfidence.HIGH,
+                )
+                "magisk_prop" -> Pair(
+                    context.getString(R.string.checker_native_root_magisk_prop, detail),
+                    EvidenceConfidence.HIGH,
+                )
+                else -> continue
+            }
+
+            findings += Finding(
+                description = description,
+                needsReview = true,
+                source = EvidenceSource.NATIVE_ROOT_DETECTION,
+                confidence = confidence,
+            )
+            evidence += EvidenceItem(
+                source = EvidenceSource.NATIVE_ROOT_DETECTION,
+                detected = true,
+                confidence = confidence,
+                description = "Root indicator [${item.kind}]: $detail",
+            )
+            needsReview = true
+        }
+
+        return PartialOutcome(findings, evidence, needsReview = needsReview)
     }
 }
 

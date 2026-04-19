@@ -1122,6 +1122,7 @@ object IndirectSignsChecker {
             }
 
             val records = VpnDumpsysParser.parseVpnManagement(output)
+                .filter { it.packageName != null || it.serviceName != null }
             if (records.isEmpty()) {
                 findings.add(Finding(context.getString(R.string.checker_indirect_dumpsys_vpn_none)))
                 return SignalOutcome()
@@ -1165,7 +1166,7 @@ object IndirectSignsChecker {
                 activeApps.add(
                     ActiveVpnApp(
                         packageName = record.packageName,
-                        serviceName = null,
+                        serviceName = record.serviceName,
                         family = signature?.family,
                         kind = signature?.kind,
                         source = EvidenceSource.ACTIVE_VPN,

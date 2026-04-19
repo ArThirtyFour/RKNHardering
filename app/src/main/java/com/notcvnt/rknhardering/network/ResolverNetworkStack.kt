@@ -22,6 +22,7 @@ import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.Proxy
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import javax.net.SocketFactory
@@ -489,22 +490,37 @@ internal class DirectDns(
         val payload = buildQuery(hostname, type, requestId)
         DatagramSocket().use { socket ->
             val registration = cancellationSignal?.register { socket.close() } ?: ScanCancellationSignal.Registration.NO_OP
-            socket.soTimeout = timeoutMs
             ResolverSocketBinder.bind(socket, binding)
+            socket.connect(server, port)
             try {
                 cancellationSignal?.throwIfCancelled()
-                socket.send(DatagramPacket(payload, payload.size, server, port))
+                socket.send(DatagramPacket(payload, payload.size))
 
                 val responseBuffer = ByteArray(1500)
-                val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size)
-                socket.receive(responsePacket)
-                cancellationSignal?.throwIfCancelled()
-                return parseResponse(
-                    hostname = hostname,
-                    type = type,
-                    expectedId = requestId,
-                    data = responsePacket.data.copyOf(responsePacket.length),
-                )
+                val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs.toLong())
+                while (true) {
+                    val remainingNanos = deadlineNanos - System.nanoTime()
+                    if (remainingNanos <= 0L) {
+                        throw SocketTimeoutException("Timed out waiting for DNS response from ${server.hostAddress}:$port")
+                    }
+
+                    socket.soTimeout = TimeUnit.NANOSECONDS.toMillis(remainingNanos)
+                        .coerceAtLeast(1L)
+                        .coerceAtMost(Int.MAX_VALUE.toLong())
+                        .toInt()
+
+                    val responsePacket = DatagramPacket(responseBuffer, responseBuffer.size)
+                    socket.receive(responsePacket)
+                    cancellationSignal?.throwIfCancelled()
+                    if (responsePacket.address != server || responsePacket.port != port) continue
+
+                    return parseResponse(
+                        hostname = hostname,
+                        type = type,
+                        expectedId = requestId,
+                        data = responsePacket.data.copyOf(responsePacket.length),
+                    )
+                }
             } catch (error: Exception) {
                 rethrowIfCancellation(error, executionContext = ScanExecutionContext(cancellationSignal = cancellationSignal ?: ScanCancellationSignal()))
                 throw error

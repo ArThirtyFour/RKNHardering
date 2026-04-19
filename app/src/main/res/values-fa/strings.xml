@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nاگر CDN pulling فعال باشد، برنامه علاوه بر این به redirector.googlevideo.com و نیز rutracker.org و meduza.io درخواست HTTPS می‌فرستد تا ببیند این endpointها چه IP عمومی و داده‌های trace برمی‌گردانند.\n\nاگر Debug diagnostics فعال باشد، برنامه می‌تواند از آخرین بررسی تکمیل‌شده یک گزارش تشخیصی قابل کپی بسازد، حتی اگر بررسی با موفقیت تمام شده باشد. این گزارش فقط تا زمان کپی شدن در حافظه نگه داشته می‌شود و پاسخ‌های CDN pulling را هم شامل می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
+    <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nاگر CDN pulling فعال باشد، برنامه علاوه بر این به redirector.googlevideo.com و نیز rutracker.org و meduza.io درخواست HTTPS می‌فرستد تا ببیند این endpointها چه IP عمومی و داده‌های trace برمی‌گردانند.\n\nاگر بررسی نشت call transport فعال باشد، برنامه علاوه بر این درخواست‌های UDP/STUN را به هدف‌های Telegram که همراه برنامه هستند می‌فرستد. هدف‌های WhatsApp فقط در buildهای debug یا experimental استفاده می‌شوند.\n\nاگر Debug diagnostics فعال باشد، برنامه می‌تواند از آخرین بررسی تکمیل‌شده یک گزارش تشخیصی قابل کپی بسازد، حتی اگر بررسی با موفقیت تمام شده باشد. این گزارش فقط تا زمان کپی شدن در حافظه نگه داشته می‌شود و پاسخ‌های CDN pulling را هم شامل می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
 
     <string name="settings_title">تنظیمات</string>
     <string name="settings_section_checks">بررسی‌ها</string>
@@ -49,7 +49,7 @@
     <string name="settings_port_full">کامل</string>
     <string name="settings_port_custom">سفارشی</string>
     <string name="settings_network_requests">درخواست‌های شبکه</string>
-    <string name="settings_network_requests_desc">GeoIP، مقایسه IP، CDN pulling، BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP، مقایسه IP، CDN pulling، BeaconDB، بررسی call transport</string>
     <string name="settings_network_disable_title">درخواست‌های شبکه غیرفعال شوند؟</string>
     <string name="settings_network_disable_message">در صورت غیرفعال شدن:\n\n• بررسی‌های GeoIP اجرا نخواهند شد\n• مقایسه IP از طریق سرویس‌های خارجی غیرفعال می‌شود\n• بررسی CDN pulling غیرفعال می‌شود\n• مکان‌یابی از طریق BeaconDB (دکل‌ها/Wi-Fi) غیرفعال می‌شود\n• بررسی نشت call transport غیرفعال می‌شود\n\nفقط بررسی‌های محلی باقی می‌مانند: نشانه‌های مستقیم، نشانه‌های غیرمستقیم و اسکن پورت</string>
     <string name="settings_network_disable_confirm">غیرفعال کردن</string>
@@ -110,6 +110,7 @@
     <string name="main_subtitle">خودآزمایی VPN/Proxy</string>
     <string name="main_run_check">اجرای بررسی</string>
     <string name="main_stop_check">توقف</string>
+    <string name="main_card_geo_ip" translatable="false">GeoIP</string>
     <string name="main_card_ip_comparison">مقایسه IP</string>
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">نشانه‌های مستقیم</string>
@@ -155,6 +156,7 @@
 
     <string name="main_loading_status_scanning">اسکن</string>
     <string name="main_loading_status_checking">در حال بررسی</string>
+    <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
     <string name="main_loading_geo_ip">در حال بررسی کشور، ASN و نشانه‌های میزبانی.</string>
     <string name="main_loading_ip_comparison">در حال مقایسه IP عمومی از طریق چند سرویس مستقل.</string>
@@ -189,6 +191,8 @@
     <string name="settings_port_range_preview_proxy_only">پورت‌های لوکال‌هاست برای اسکن proxy: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_xray_only">پورت‌های لوکال‌هاست برای اسکن API Xray: %1$s (%2$s)</string>
     <string name="settings_port_range_preview_disabled">اسکن‌های proxy محلی و Xray غیرفعال هستند.</string>
+    <string name="settings_port_range_start_default" translatable="false">1024</string>
+    <string name="settings_port_range_end_default" translatable="false">65535</string>
     <plurals name="settings_port_word">
         <item quantity="one">%1$s پورت</item>
         <item quantity="other">%1$s پورت</item>
@@ -464,8 +468,8 @@
     <string name="tile_hint_error">خطا</string>
 
     <!-- NativeSignsChecker -->
-    <string name="checker_native_category_name">نشانه‌های بومی</string>
-    <string name="checker_native_card_title">بررسی‌های بومی سطح پایین</string>
+    <string name="checker_native_category_name">نشانه‌های بومی β</string>
+    <string name="checker_native_card_title">بررسی‌های بومی سطح پایین β</string>
     <string name="checker_native_unavailable">کتابخانه بومی بارگذاری نشد؛ بررسی‌ها در دسترس نیستند.</string>
     <string name="checker_native_unavailable_with_reason">کتابخانه بومی بارگذاری نشد: %1$s</string>
     <string name="checker_native_no_anomalies">سیگنال‌های بومی: هیچ ناهنجاری شناسایی نشد</string>
@@ -486,4 +490,17 @@
     <string name="checker_native_symbols_clean">سمبل‌های libc به‌درستی resolve می‌شوند</string>
     <string name="checker_native_symbol_missing">dlsym %1$s: یافت نشد</string>
     <string name="checker_native_symbol_foreign_library">dlsym %1$s به کتابخانه دیگری اشاره می‌کند: %2$s</string>
+
+    <!-- NativeSignsChecker: root detection -->
+    <string name="checker_native_root_clean">نشانگرهای root: هیچ نشانه‌ای از دسترسی root شناسایی نشد</string>
+    <string name="checker_native_root_su_binary">فایل اجرایی su پیدا شد: %1$s</string>
+    <string name="checker_native_root_property">ویژگی سیستمی مشکوک: %1$s</string>
+    <string name="checker_native_root_mgmt_artifact">فایل مدیریت root: %1$s</string>
+    <string name="checker_native_root_system_rw">پارتیشن /system قابل نوشتن است</string>
+    <string name="checker_native_root_suspicious_mount">رکورد mount مشکوک: %1$s</string>
+    <string name="checker_native_root_overlay_mount">overlay mount روی پارتیشن سیستم: %1$s</string>
+    <string name="checker_native_root_selinux_permissive">SELinux در حالت permissive است</string>
+    <string name="checker_native_root_selinux_absent">وضعیت اجرای SELinux قابل دسترس نیست</string>
+    <string name="checker_native_root_uid">فرآیند با UID root در حال اجراست: %1$s</string>
+    <string name="checker_native_root_magisk_prop">ویژگی Magisk شناسایی شد: %1$s</string>
 </resources>

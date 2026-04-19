@@ -76,6 +76,21 @@ class NativeInterfaceProbeTest {
     }
 
     @Test
+    fun `parseProcIpv6Route extracts default route`() {
+        val content = """
+            00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000000 00000000 00000001 tun0
+            20010DB8000000000000000000000000 40 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000000 00000000 00000001 wlan0
+        """.trimIndent()
+
+        val routes = NativeInterfaceProbe.parseProcIpv6Route(content)
+
+        assertEquals(2, routes.size)
+        val defaultRoute = routes.first { it.isDefault }
+        assertEquals("tun0", defaultRoute.interfaceName)
+        assertEquals("00000000000000000000000000000000", defaultRoute.destinationHex)
+    }
+
+    @Test
     fun `parseMapsSummary extracts markers and rwx`() {
         val rows = arrayOf(
             "marker|frida-gadget|/data/local/tmp/frida-gadget.so",

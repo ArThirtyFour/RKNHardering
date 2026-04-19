@@ -55,6 +55,7 @@ object CallTransportChecker {
     private data class StunSweepResult(
         val groups: List<StunProbeGroupResult>,
         val scopeTimings: List<StunScopeTiming>,
+        val error: CallTransportLeakResult? = null,
     )
 
     internal data class Dependencies(
@@ -170,6 +171,7 @@ object CallTransportChecker {
                 onProgress = onProgress,
             )
         }
+        stunSweep.error?.let(results::add)
         val stunGroups = stunSweep.groups
 
         val deduplicated = deduplicate(results)
@@ -210,10 +212,32 @@ object CallTransportChecker {
     ): StunSweepResult = withContext(Dispatchers.IO) {
         val dependencies = dependenciesOverride ?: Dependencies()
         val catalog = cancellationAwareRunCatching { dependencies.loadCatalog(context) }
-            .getOrElse { return@withContext StunSweepResult(emptyList(), emptyList()) }
+            .getOrElse { error ->
+                return@withContext StunSweepResult(
+                    groups = emptyList(),
+                    scopeTimings = emptyList(),
+                    error = errorResult(
+                        service = CallTransportService.TELEGRAM,
+                        probeKind = CallTransportProbeKind.DIRECT_UDP_STUN,
+                        path = CallTransportNetworkPath.ACTIVE,
+                        summary = "STUN target catalog is unavailable: ${error.message ?: error::class.java.simpleName}",
+                    ),
+                )
+            }
 
         val paths = cancellationAwareRunCatching { dependencies.loadPaths(context) }
-            .getOrElse { return@withContext StunSweepResult(emptyList(), emptyList()) }
+            .getOrElse { error ->
+                return@withContext StunSweepResult(
+                    groups = emptyList(),
+                    scopeTimings = emptyList(),
+                    error = errorResult(
+                        service = CallTransportService.TELEGRAM,
+                        probeKind = CallTransportProbeKind.DIRECT_UDP_STUN,
+                        path = CallTransportNetworkPath.ACTIVE,
+                        summary = "Call transport network paths are unavailable: ${error.message ?: error::class.java.simpleName}",
+                    ),
+                )
+            }
 
         val activePath = paths.firstOrNull { it.path == CallTransportNetworkPath.ACTIVE }
             ?: return@withContext StunSweepResult(emptyList(), emptyList())

@@ -122,6 +122,26 @@ class NativeSignsCheckerTest {
         assertEquals(0, integrityEvidence.size)
     }
 
+    @Test
+    fun `ipv6 default vpn route is detected`() {
+        NativeSignsBridge.readProcFileOverride = { path, _ ->
+            when (path) {
+                "/proc/net/ipv6_route" -> """
+                    00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000000 00000000 00000001 tun0
+                """.trimIndent()
+                else -> null
+            }
+        }
+
+        val result = runBlocking { NativeSignsChecker.check(context) }
+
+        assertTrue(
+            result.evidence.any {
+                it.source == EvidenceSource.NATIVE_ROUTE && it.detected
+            },
+        )
+    }
+
     @Suppress("unused")
     private fun referencedConfidence(): EvidenceConfidence = EvidenceConfidence.HIGH
 }

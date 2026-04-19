@@ -776,6 +776,156 @@ jobjectArray nativeLibraryIntegrity(JNIEnv *env, jclass /*clazz*/) {
     return toStringArray(env, rows);
 }
 
+jobjectArray nativeDetectRoot(JNIEnv *env, jclass /*clazz*/) {
+    std::vector<std::string> findings;
+
+    // 1. Check for su binary in common paths
+    static const char *const kSuPaths[] = {
+        "/system/bin/su",
+        "/system/xbin/su",
+        "/sbin/su",
+        "/su/bin/su",
+        "/data/local/su",
+        "/data/local/bin/su",
+        "/data/local/xbin/su",
+        "/system/sd/xbin/su",
+        "/system/bin/failsafe/su",
+        "/vendor/bin/su",
+        "/product/bin/su",
+        "/apex/com.android.runtime/bin/su",
+    };
+    for (const char *path : kSuPaths) {
+        if (access(path, F_OK) == 0) {
+            std::string f = "su_binary|";
+            f.append(path);
+            findings.push_back(f);
+        }
+    }
+
+    // 2. Check root-related system properties
+    struct PropCheck {
+        const char *prop;
+        const char *suspiciousValue;
+    };
+    static const PropCheck kRootProps[] = {
+        {"ro.debuggable", "1"},
+        {"ro.secure", "0"},
+        {"ro.build.selinux", "0"},
+        {"service.adb.root", "1"},
+        {"ro.build.tags", "test-keys"},
+    };
+    for (const auto &check : kRootProps) {
+        char val[PROP_VALUE_MAX] = {0};
+        if (__system_property_get(check.prop, val) > 0) {
+            if (std::strcmp(val, check.suspiciousValue) == 0) {
+                std::string f = "root_prop|";
+                f.append(check.prop);
+                f.push_back('=');
+                f.append(val);
+                findings.push_back(f);
+            }
+        }
+    }
+
+    // 3. Check for root management app artifacts
+    static const char *const kRootMgmtPaths[] = {
+        "/data/adb/magisk",
+        "/data/adb/modules",
+        "/data/adb/ksu",
+        "/data/adb/ksud",
+        "/system/app/Superuser.apk",
+        "/system/app/SuperSU.apk",
+        "/system/app/SuperSU",
+        "/system/xbin/daemonsu",
+        "/system/etc/init.d/99SuperSUDaemon",
+        "/dev/com.koushikdutta.superuser.daemon",
+    };
+    for (const char *path : kRootMgmtPaths) {
+        if (access(path, F_OK) == 0) {
+            std::string f = "root_mgmt|";
+            f.append(path);
+            findings.push_back(f);
+        }
+    }
+
+    // 4. Check /system writability
+    if (access("/system", W_OK) == 0) {
+        findings.push_back("system_rw|/system is writable");
+    }
+
+    // 5. Check /proc/self/mounts for suspicious mount entries
+    FILE *mounts = std::fopen("/proc/self/mounts", "re");
+    if (mounts != nullptr) {
+        char line[1024];
+        while (std::fgets(line, sizeof(line), mounts) != nullptr) {
+            // Magisk tmpfs overlays on /system, /vendor, /product
+            if (std::strstr(line, "magisk") != nullptr ||
+                std::strstr(line, "core-only") != nullptr) {
+                std::string raw(line);
+                if (!raw.empty() && raw.back() == '\n') raw.pop_back();
+                std::string f = "suspicious_mount|";
+                f.append(raw);
+                findings.push_back(f);
+            }
+            // Overlayfs on /system suggests rootfs modifications
+            if (std::strstr(line, "overlay") != nullptr &&
+                (std::strstr(line, "/system") != nullptr ||
+                 std::strstr(line, "/vendor") != nullptr)) {
+                std::string raw(line);
+                if (!raw.empty() && raw.back() == '\n') raw.pop_back();
+                std::string f = "overlay_mount|";
+                f.append(raw);
+                findings.push_back(f);
+            }
+        }
+        std::fclose(mounts);
+    }
+
+    // 6. Check SELinux enforcement
+    FILE *selinux = std::fopen("/sys/fs/selinux/enforce", "re");
+    if (selinux != nullptr) {
+        int enforce = -1;
+        if (std::fscanf(selinux, "%d", &enforce) == 1 && enforce == 0) {
+            findings.push_back("selinux|permissive");
+        }
+        std::fclose(selinux);
+    } else {
+        // SELinux filesystem not accessible — might be disabled entirely
+        findings.push_back("selinux|absent");
+    }
+
+    // 7. Check current process UID/GID
+    uid_t uid = getuid();
+    uid_t euid = geteuid();
+    gid_t gid = getgid();
+    if (uid == 0 || euid == 0 || gid == 0) {
+        char buf[128];
+        std::snprintf(buf, sizeof(buf), "uid=%d euid=%d gid=%d", uid, euid, gid);
+        std::string f = "root_uid|";
+        f.append(buf);
+        findings.push_back(f);
+    }
+
+    // 8. Check for Magisk-specific properties
+    static const char *const kMagiskProps[] = {
+        "init.svc.magisk_daemon",
+        "init.svc.magisk_pfs",
+        "persist.magisk.hide",
+    };
+    for (const char *prop : kMagiskProps) {
+        char val[PROP_VALUE_MAX] = {0};
+        if (__system_property_get(prop, val) > 0 && val[0] != '\0') {
+            std::string f = "magisk_prop|";
+            f.append(prop);
+            f.push_back('=');
+            f.append(val);
+            findings.push_back(f);
+        }
+    }
+
+    return toStringArray(env, findings);
+}
+
 const JNINativeMethod kMethods[] = {
     {"nativeGetIfAddrs", "()[Ljava/lang/String;", reinterpret_cast<void *>(nativeGetIfAddrs)},
     {"nativeIfNameToIndex", "(Ljava/lang/String;)I", reinterpret_cast<void *>(nativeIfNameToIndex)},
@@ -786,6 +936,7 @@ const JNINativeMethod kMethods[] = {
     {"nativeInterfaceDump", "()[Ljava/lang/String;", reinterpret_cast<void *>(nativeInterfaceDump)},
     {"nativeNetlinkRouteDump", "(I)[Ljava/lang/String;", reinterpret_cast<void *>(nativeNetlinkRouteDump)},
     {"nativeNetlinkSockDiag", "(II)[Ljava/lang/String;", reinterpret_cast<void *>(nativeNetlinkSockDiag)},
+    {"nativeDetectRoot", "()[Ljava/lang/String;", reinterpret_cast<void *>(nativeDetectRoot)},
 };
 
 } // namespace
