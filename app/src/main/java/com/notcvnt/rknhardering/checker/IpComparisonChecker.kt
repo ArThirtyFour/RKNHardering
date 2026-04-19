@@ -99,7 +99,7 @@ object IpComparisonChecker {
 
     suspend fun check(
         context: Context,
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     ): IpComparisonResult = withContext(Dispatchers.IO) {
         coroutineScope {

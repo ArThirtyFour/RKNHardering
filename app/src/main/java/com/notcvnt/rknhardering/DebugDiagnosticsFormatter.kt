@@ -1,6 +1,10 @@
 package com.notcvnt.rknhardering
 
 import com.notcvnt.rknhardering.checker.CheckSettings
+import com.notcvnt.rknhardering.checker.DebugStepTiming
+import com.notcvnt.rknhardering.checker.IndirectCheckPerformanceRegistry
+import com.notcvnt.rknhardering.checker.StunScopeTiming
+import com.notcvnt.rknhardering.checker.summarizeDominantDelay
 import com.notcvnt.rknhardering.model.ActiveVpnApp
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CdnPullingResponse
@@ -55,6 +59,7 @@ object DebugDiagnosticsFormatter {
         appendCdnPulling(builder, result.cdnPulling)
         appendCategory(builder, "directSigns", result.directSigns)
         appendCategory(builder, "indirectSigns", result.indirectSigns)
+        appendIndirectPerformance(builder, result.indirectSigns)
         appendCategory(builder, "locationSignals", result.locationSignals)
         appendBypass(builder, result.bypassResult)
         appendCategory(builder, "nativeSigns", result.nativeSigns)
@@ -357,6 +362,55 @@ object DebugDiagnosticsFormatter {
         appendNamedCollection(builder, "callTransport", category.callTransportLeaks, ::formatCallTransportLeak)
     }
 
+    private fun appendIndirectPerformance(
+        builder: StringBuilder,
+        category: CategoryResult,
+    ) {
+        val diagnostics = IndirectCheckPerformanceRegistry.find(category) ?: return
+        val dominantDelay = diagnostics.summarizeDominantDelay()
+
+        builder.appendLine()
+        builder.appendLine("[indirectSigns.performance]")
+        builder.appendLine("totalDurationMs: ${diagnostics.totalDurationMs}")
+        builder.appendLine("dominantDelay: ${dominantDelay.label}")
+        builder.appendLine("dominantDelayMs: ${dominantDelay.durationMs}")
+        builder.appendLine("steps:")
+        if (diagnostics.steps.isEmpty()) {
+            builder.appendLine("- <none>")
+        } else {
+            diagnostics.steps.forEach { timing ->
+                builder.appendLine("- ${formatStepTiming(timing)}")
+            }
+        }
+
+        val callTransport = diagnostics.callTransport
+        builder.appendLine("callTransportTimingCollected: ${callTransport != null}")
+        if (callTransport == null) {
+            return
+        }
+
+        builder.appendLine("callTransport.totalDurationMs: ${callTransport.totalDurationMs}")
+        builder.appendLine("callTransport.totalStunTargets: ${callTransport.totalStunTargets}")
+        builder.appendLine("callTransport.respondedStunTargets: ${callTransport.respondedStunTargets}")
+        builder.appendLine("callTransport.noResponseStunTargets: ${callTransport.noResponseStunTargets}")
+        builder.appendLine("callTransport.steps:")
+        if (callTransport.steps.isEmpty()) {
+            builder.appendLine("- <none>")
+        } else {
+            callTransport.steps.forEach { timing ->
+                builder.appendLine("- ${formatStepTiming(timing)}")
+            }
+        }
+        builder.appendLine("callTransport.stunScopes:")
+        if (callTransport.stunScopeTimings.isEmpty()) {
+            builder.appendLine("- <none>")
+        } else {
+            callTransport.stunScopeTimings.forEach { timing ->
+                builder.appendLine("- ${formatStunScopeTiming(timing)}")
+            }
+        }
+    }
+
     private fun appendIpComparison(
         builder: StringBuilder,
         ipComparison: IpComparisonResult,
@@ -566,6 +620,24 @@ object DebugDiagnosticsFormatter {
             leak.confidence?.let { add("confidence=$it") }
             add("experimental=${leak.experimental}")
             add("summary=${maskIpsInText(leak.summary)}")
+        }.joinToString(" ")
+    }
+
+    private fun formatStepTiming(timing: DebugStepTiming): String {
+        return buildList {
+            add("name=${timing.name}")
+            add("durationMs=${timing.durationMs}")
+            add("skipped=${timing.skipped}")
+        }.joinToString(" ")
+    }
+
+    private fun formatStunScopeTiming(timing: StunScopeTiming): String {
+        return buildList {
+            add("scope=${timing.scope}")
+            add("durationMs=${timing.durationMs}")
+            add("targets=${timing.targetCount}")
+            add("responded=${timing.respondedCount}")
+            add("noResponse=${timing.noResponseCount}")
         }.joinToString(" ")
     }
 

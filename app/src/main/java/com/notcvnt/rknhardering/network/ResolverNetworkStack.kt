@@ -47,8 +47,8 @@ internal data class ResolverHttpRequest(
 )
 
 object ResolverNetworkStack {
-    internal const val OKHTTP_RETRY_COUNT = 2
-    internal const val NATIVE_CURL_RETRY_COUNT = 2
+    internal const val OKHTTP_RETRY_COUNT = 1
+    internal const val NATIVE_CURL_RETRY_COUNT = 1
 
     private val lock = Any()
     @Volatile

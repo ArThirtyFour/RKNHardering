@@ -38,7 +38,7 @@ object PublicIpClient {
 
     fun fetchIp(
         endpoint: String,
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         proxy: Proxy? = null,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         binding: ResolverBinding? = null,

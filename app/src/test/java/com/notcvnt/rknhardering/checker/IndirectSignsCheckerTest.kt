@@ -514,6 +514,14 @@ class IndirectSignsCheckerTest {
         assertTrue(result.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW })
         assertTrue(result.needsReview)
         assertTrue(result.evidence.any { it.source == EvidenceSource.TELEGRAM_CALL_TRANSPORT && it.detected })
+        val diagnostics = IndirectCheckPerformanceRegistry.find(result)
+        assertTrue(diagnostics != null)
+        assertTrue(diagnostics!!.steps.any { it.name == "checkCallTransportSignals" })
+        assertTrue(diagnostics.callTransport != null)
+        assertTrue(diagnostics.callTransport!!.steps.any { it.name == "probeStunTargets" })
+        assertEquals(1, diagnostics.callTransport!!.totalStunTargets)
+        assertEquals(1, diagnostics.callTransport!!.respondedStunTargets)
+        assertEquals(0, diagnostics.callTransport!!.noResponseStunTargets)
     }
 
     @Test

@@ -23,7 +23,7 @@ object IfconfigClient {
     )
 
     suspend fun fetchDirectIp(
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         executionContext: ScanExecutionContext = ScanExecutionContext.currentOrDefault(),
     ): Result<String> = fetchIpWithFallback(
@@ -34,7 +34,7 @@ object IfconfigClient {
 
     suspend fun fetchIpViaProxy(
         endpoint: ProxyEndpoint,
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         executionContext: ScanExecutionContext = ScanExecutionContext.currentOrDefault(),
     ): Result<String> = fetchIpWithFallback(
@@ -53,7 +53,7 @@ object IfconfigClient {
     suspend fun fetchIpViaNetwork(
         primaryBinding: ResolverBinding.AndroidNetworkBinding,
         fallbackBinding: ResolverBinding.OsDeviceBinding? = null,
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         modeOverride: TunProbeModeOverride = TunProbeModeOverride.AUTO,
         executionContext: ScanExecutionContext = ScanExecutionContext.currentOrDefault(),
@@ -69,7 +69,7 @@ object IfconfigClient {
     suspend fun fetchIpViaNetworkComparison(
         primaryBinding: ResolverBinding.AndroidNetworkBinding,
         fallbackBinding: ResolverBinding.OsDeviceBinding? = null,
-        timeoutMs: Int = 7000,
+        timeoutMs: Int = 5_000,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         modeOverride: TunProbeModeOverride = TunProbeModeOverride.AUTO,
         collectTrace: Boolean = false,
