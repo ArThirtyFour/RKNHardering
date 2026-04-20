@@ -13,6 +13,7 @@ object NetworkInterfacePatterns {
     val STANDARD_INTERFACES: List<Regex> = listOf(
         Regex("^wlan.*"),
         Regex("^rmnet.*"),
+        Regex("^seth.*"),   // LTE interface on select Qualcomm/MediaTek devices (e.g. Itel, Tecno, Infinix)
         Regex("^eth.*"),
         Regex("^lo$"),
         Regex("^ccmni.*"),

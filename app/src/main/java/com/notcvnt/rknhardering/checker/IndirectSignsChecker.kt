@@ -118,6 +118,7 @@ object IndirectSignsChecker {
     private val STANDARD_INTERFACES = listOf(
         Regex("^wlan.*"),
         Regex("^rmnet.*"),
+        Regex("^seth.*"),   // LTE interface on select Qualcomm/MediaTek devices (e.g. seth_lte0)
         Regex("^eth.*"),
         Regex("^lo$"),
         Regex("^ccmni.*"),
