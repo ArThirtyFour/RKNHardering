@@ -32,6 +32,7 @@ class CheckResultMarkdownExportFormatterTest {
         assertTrue(markdown.contains("| Section | Status | Summary |"))
         assertTrue(markdown.contains("## GeoIP"))
         assertTrue(markdown.contains("## ${context.getString(R.string.main_card_ip_comparison)}"))
+        assertTrue(markdown.contains("## ${context.getString(R.string.main_card_icmp_spoofing)}"))
         assertTrue(markdown.contains("## ${context.getString(R.string.settings_split_tunnel)}"))
         assertTrue(markdown.contains("## Footer"))
     }

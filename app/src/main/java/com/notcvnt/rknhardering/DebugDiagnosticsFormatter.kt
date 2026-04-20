@@ -59,6 +59,7 @@ object DebugDiagnosticsFormatter {
         appendCdnPulling(builder, result.cdnPulling)
         appendCategory(builder, "directSigns", result.directSigns)
         appendCategory(builder, "indirectSigns", result.indirectSigns)
+        appendCategory(builder, "icmpSpoofing", result.icmpSpoofing)
         appendIndirectPerformance(builder, result.indirectSigns)
         appendCategory(builder, "locationSignals", result.locationSignals)
         appendBypass(builder, result.bypassResult)

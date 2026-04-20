@@ -43,6 +43,7 @@ internal object CheckResultMarkdownExportFormatter {
         appendCdnPullingSection(builder, context, result.cdnPulling, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_direct_signs), result.directSigns, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_indirect_signs), result.indirectSigns, snapshot.privacyMode)
+        appendCategorySection(builder, context.getString(R.string.main_card_icmp_spoofing), result.icmpSpoofing, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_location_signals), result.locationSignals, snapshot.privacyMode)
         appendIpChannelsSection(builder, result.ipConsensus, snapshot.privacyMode)
         appendBypassSection(builder, context, result.bypassResult, snapshot.privacyMode)
@@ -133,6 +134,12 @@ internal object CheckResultMarkdownExportFormatter {
             title = context.getString(R.string.main_card_indirect_signs),
             status = sectionStatusTag(result.indirectSigns.detected, result.indirectSigns.needsReview, result.indirectSigns.hasError),
             summary = buildCategorySummary(result.indirectSigns, snapshot.privacyMode),
+        )
+        appendSectionSummaryRow(
+            builder,
+            title = context.getString(R.string.main_card_icmp_spoofing),
+            status = sectionStatusTag(result.icmpSpoofing.detected, result.icmpSpoofing.needsReview, result.icmpSpoofing.hasError),
+            summary = buildCategorySummary(result.icmpSpoofing, snapshot.privacyMode),
         )
         appendSectionSummaryRow(
             builder,

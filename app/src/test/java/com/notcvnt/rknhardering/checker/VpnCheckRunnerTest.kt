@@ -31,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CancellationException
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -148,6 +149,62 @@ class VpnCheckRunnerTest {
 
         assertEquals(false, capturedProxyScanEnabled)
         assertEquals(true, capturedXrayApiScanEnabled)
+    }
+
+    @Test
+    fun `icmp spoofing check runs only when network requests are enabled`() = runBlocking {
+        var icmpCalls = 0
+
+        VpnCheckRunner.dependenciesOverride = VpnCheckRunner.Dependencies(
+            geoIpCheck = { _, _ -> category("geo") },
+            ipComparisonCheck = { _, _ -> emptyIpComparison() },
+            icmpSpoofingCheck = { _, _ ->
+                icmpCalls += 1
+                category(
+                    name = "icmp",
+                    needsReview = true,
+                    evidence = listOf(
+                        EvidenceItem(
+                            source = EvidenceSource.ICMP_SPOOFING,
+                            detected = true,
+                            confidence = EvidenceConfidence.MEDIUM,
+                            description = "ICMP looked suspicious",
+                        ),
+                    ),
+                )
+            },
+            directCheck = { _, _ -> category("direct") },
+            indirectCheck = { _, _, _, _ -> category("indirect") },
+            locationCheck = { _, _, _ -> category("location") },
+            bypassCheck = { _, _, _, _, _, _, _, _, _, _ ->
+                error("BypassChecker should not run when split tunnel is disabled")
+            },
+        )
+
+        val disabledResult = VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = false,
+                networkRequestsEnabled = false,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        )
+
+        assertEquals(0, icmpCalls)
+        assertFalse(disabledResult.icmpSpoofing.needsReview)
+
+        val enabledResult = VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = false,
+                networkRequestsEnabled = true,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        )
+
+        assertEquals(1, icmpCalls)
+        assertTrue(enabledResult.icmpSpoofing.needsReview)
+        assertEquals(Verdict.NEEDS_REVIEW, enabledResult.verdict)
     }
 
     @Test

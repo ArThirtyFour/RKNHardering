@@ -204,6 +204,20 @@ class VerdictEngineTest {
     }
 
     @Test
+    fun `R6 icmp spoofing review alone promotes to needs review`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = category(),
+            bypassResult = bypass(),
+            ipConsensus = IpConsensusResult.empty(),
+            icmpSpoofing = category(needsReview = true),
+        )
+        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+    }
+
+    @Test
     fun `R7 empty input yields not detected`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),

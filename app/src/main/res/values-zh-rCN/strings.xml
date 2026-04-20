@@ -151,6 +151,7 @@
     <string name="main_card_call_transport_stun_ipv6">IPv6</string>
     <string name="main_card_call_transport_stun_no_response">无响应</string>
     <string name="main_card_call_transport_stun_error">错误</string>
+    <string name="main_card_icmp_spoofing">ICMP 伪造 β</string>
     <string name="main_card_location_signals">位置迹象</string>
     <string name="main_card_native_signs">原生迹象</string>
     <string name="main_verdict_details">详情</string>
@@ -177,6 +178,7 @@
     <string name="main_loading_geo_ip">正在检查国家、ASN 和托管迹象。</string>
     <string name="main_loading_ip_comparison">正在通过多个独立服务比较公网 IP。</string>
     <string name="main_loading_cdn_pulling">正在检查被封锁或 CDN 支持的端点会返回哪些网络数据。</string>
+    <string name="main_loading_icmp">正在通过当前活动路由解析并 ping 被封锁和对照主机。</string>
     <string name="main_loading_direct">正在查找 VPN、代理和已安装客户端的直接迹象。</string>
     <string name="main_loading_indirect">正在检查接口、DNS、路由和本地技术迹象。</string>
     <string name="main_loading_location">正在收集运营商、基站和附近 Wi-Fi 的迹象。</string>
@@ -228,6 +230,19 @@
     <string name="narrative_explanation_exposure_local_proxy">只能看到设备上的本地 proxy/API，看不到远程节点地址。</string>
     <string name="narrative_explanation_exposure_technical">只获得了技术性网络与路由迹象，没有服务器地址。</string>
     <string name="narrative_explanation_exposure_insufficient">既未获得服务器地址，也未获得公网 IP。</string>
+    <string name="narrative_reason_icmp_signal">检测到了异常 ICMP 响应或不现实的往返时间，需要人工复核。</string>
+
+    <string name="checker_icmp_summary_clean">%1$s 未响应，且 %2$s 保持在 RTT 阈值之上（平均 %3$s）</string>
+    <string name="checker_icmp_summary_blocked_replied">%1$s 返回了 ICMP 响应，但按预期它在俄罗斯路由上应保持静默</string>
+    <string name="checker_icmp_summary_control_too_fast">%1$s 返回了可疑地偏低的 RTT（最小 %2$s，平均 %3$s）</string>
+    <string name="checker_icmp_summary_both_suspicious">%1$s 已响应，且 %2$s 过快（最小 %3$s，平均 %4$s）</string>
+    <string name="checker_icmp_summary_inconclusive">ICMP 检查结论不确定，因为 %1$s 未响应</string>
+    <string name="checker_icmp_summary_unavailable">系统 ping 不可用，或其输出无法解析。</string>
+    <string name="checker_icmp_target_blocked">被封锁目标 %1$s（%2$s）：%3$d/%4$d 次响应</string>
+    <string name="checker_icmp_target_control">对照目标 %1$s（%2$s）：%3$d/%4$d 次响应，最小 %5$s，平均 %6$s，最大 %7$s</string>
+    <string name="checker_icmp_evidence_both">%1$s 已响应，且 %2$s 的 RTT 一直低于预期阈值</string>
+    <string name="checker_icmp_evidence_blocked_replied">%1$s 在当前活动路由上通过 ICMP 返回了响应</string>
+    <string name="checker_icmp_evidence_control_too_fast">%1$s 的 RTT 在当前活动路由上一直低于预期阈值</string>
 
     <string name="narrative_meaning_detected">红色结论表示自动检查已经收集到足够的绕过迹象。</string>
     <string name="narrative_meaning_needs_review">黄色结论表示存在一些迹象，但仍需人工复核。</string>

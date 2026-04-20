@@ -9,6 +9,7 @@ import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
+import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.GeoIpFacts
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
@@ -35,6 +36,7 @@ data class CheckSettings(
     val callTransportProbeEnabled: Boolean = false,
     val cdnPullingEnabled: Boolean = false,
     val cdnPullingMeduzaEnabled: Boolean = true,
+    val icmpSpoofingEnabled: Boolean = true,
     val tunProbeDebugEnabled: Boolean = false,
     val tunProbeModeOverride: TunProbeModeOverride = TunProbeModeOverride.AUTO,
     val resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
@@ -47,6 +49,7 @@ sealed interface CheckUpdate {
     data class GeoIpReady(val result: CategoryResult) : CheckUpdate
     data class IpComparisonReady(val result: IpComparisonResult) : CheckUpdate
     data class CdnPullingReady(val result: CdnPullingResult) : CheckUpdate
+    data class IcmpSpoofingReady(val result: CategoryResult) : CheckUpdate
     data class DirectSignsReady(val result: CategoryResult) : CheckUpdate
     data class IndirectSignsReady(val result: CategoryResult) : CheckUpdate
     data class LocationSignalsReady(val result: CategoryResult) : CheckUpdate
@@ -66,6 +69,8 @@ object VpnCheckRunner {
             { ctx, resolverConfig -> IpComparisonChecker.check(ctx, resolverConfig = resolverConfig) },
         val cdnPullingCheck: suspend (Context, DnsResolverConfig, Boolean) -> CdnPullingResult =
             { ctx, resolverConfig, meduzaEnabled -> CdnPullingChecker.check(ctx, resolverConfig = resolverConfig, meduzaEnabled = meduzaEnabled) },
+        val icmpSpoofingCheck: suspend (Context, DnsResolverConfig) -> CategoryResult =
+            { ctx, resolverConfig -> IcmpSpoofingChecker.check(ctx, resolverConfig) },
         val underlyingProbe: suspend (
             Context,
             DnsResolverConfig,
@@ -171,6 +176,21 @@ object VpnCheckRunner {
                 vpnActive = false,
                 vpnError = error.message,
             )
+        fun icmp(context: Context, error: Throwable): CategoryResult = CategoryResult(
+            name = context.getString(R.string.main_card_icmp_spoofing),
+            detected = false,
+            findings = listOf(
+                Finding(
+                    context.getString(R.string.checker_icmp_summary_unavailable),
+                    isInformational = true,
+                ),
+                Finding(
+                    error.message ?: error::class.java.simpleName,
+                    isError = true,
+                    source = EvidenceSource.ICMP_SPOOFING,
+                ),
+            ),
+        )
         fun direct(context: Context, error: Throwable): CategoryResult = CategoryResult(
             name = context.getString(R.string.checker_direct_category_name),
             detected = false,
@@ -228,6 +248,12 @@ object VpnCheckRunner {
         val cdnPullingDeferred = if (settings.networkRequestsEnabled && settings.cdnPullingEnabled) {
             safeAsync(fallback = { Fallbacks.cdn(it) }) {
                 dependencies.cdnPullingCheck(context, settings.resolverConfig, settings.cdnPullingMeduzaEnabled)
+            }
+        } else null
+
+        val icmpSpoofingDeferred = if (settings.networkRequestsEnabled && settings.icmpSpoofingEnabled) {
+            safeAsync(context = Dispatchers.IO, fallback = { Fallbacks.icmp(context, it) }) {
+                dependencies.icmpSpoofingCheck(context, settings.resolverConfig)
             }
         } else null
 
@@ -307,6 +333,14 @@ object VpnCheckRunner {
                 }
             }
         }
+        val icmpSpoofingReadyDeferred = icmpSpoofingDeferred?.let { deferred ->
+            async {
+                deferred.await().also { result ->
+                    executionContext.throwIfCancelled()
+                    onUpdate?.invoke(CheckUpdate.IcmpSpoofingReady(result))
+                }
+            }
+        }
         val directReadyDeferred = async {
             directDeferred.await().also { result ->
                 executionContext.throwIfCancelled()
@@ -360,6 +394,11 @@ object VpnCheckRunner {
             ),
         )
         val emptyCdnPulling = CdnPullingResult.empty()
+        val emptyIcmpSpoofing = CategoryResult(
+            name = context.getString(R.string.main_card_icmp_spoofing),
+            detected = false,
+            findings = emptyList(),
+        )
         val emptyBypass = BypassResult(
             proxyEndpoint = null,
             proxyOwner = null,
@@ -375,6 +414,7 @@ object VpnCheckRunner {
         val geoIp = geoIpReadyDeferred?.await() ?: emptyGeoIpCategory
         val ipComparison = ipComparisonReadyDeferred?.await() ?: emptyIpComparison
         val cdnPulling = cdnPullingReadyDeferred?.await() ?: emptyCdnPulling
+        val icmpSpoofing = icmpSpoofingReadyDeferred?.await() ?: emptyIcmpSpoofing
         val directSigns = directReadyDeferred.await()
         val indirectSigns = indirectReadyDeferred.await()
         val locationSignals = locationReadyDeferred.await()
@@ -406,6 +446,7 @@ object VpnCheckRunner {
             bypassResult = bypassResult,
             ipConsensus = ipConsensus,
             nativeSigns = nativeSigns,
+            icmpSpoofing = icmpSpoofing,
         )
         executionContext.throwIfCancelled()
         onUpdate?.invoke(CheckUpdate.VerdictReady(verdict))
@@ -421,8 +462,9 @@ object VpnCheckRunner {
             verdict = verdict,
             tunProbeDiagnostics = tunProbeResult?.tunProbeDiagnostics,
             nativeSigns = nativeSigns,
+            icmpSpoofing = icmpSpoofing,
             ipConsensus = ipConsensus,
         )
     }
-    }
+}
 }

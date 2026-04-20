@@ -129,6 +129,7 @@ class DebugDiagnosticsFormatterTest {
 
         assertTrue(report.contains("debugDiagnosticsEnabled: true"))
         assertTrue(report.contains("[geoIp]"))
+        assertTrue(report.contains("[icmpSpoofing]"))
         assertTrue(report.contains("[bypass]"))
         assertTrue(report.contains("[tunProbe]"))
         assertTrue(report.contains("collected: false"))

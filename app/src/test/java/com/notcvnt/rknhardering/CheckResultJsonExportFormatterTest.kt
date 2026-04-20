@@ -36,6 +36,7 @@ class CheckResultJsonExportFormatterTest {
         assertTrue(results.has("geoIp"))
         assertTrue(results.has("ipComparison"))
         assertTrue(results.has("cdnPulling"))
+        assertTrue(results.has("icmpSpoofing"))
         assertTrue(results.has("bypass"))
         assertTrue(results.getJSONObject("ipComparison").getJSONObject("ruGroup").has("responses"))
         val outbound = results
@@ -129,5 +130,25 @@ class CheckResultJsonExportFormatterTest {
         assertEquals(0, ipConsensus.getJSONArray("observedIps").length())
         assertFalse(ipConsensus.getBoolean("crossChannelMismatch"))
         assertFalse(ipConsensus.getBoolean("needsReview"))
+    }
+
+    @Test
+    fun `json export includes icmp spoofing category separately`() {
+        val json = JSONObject(
+            CheckResultJsonExportFormatter.format(
+                context = context,
+                snapshot = createCompletedExportSnapshot(
+                    result = exportRichCheckResult(),
+                    privacyMode = false,
+                    finishedAtMillis = 0L,
+                ),
+                appVersionName = "1.0",
+                buildType = "debug",
+            ),
+        )
+
+        val icmp = json.getJSONObject("results").getJSONObject("icmpSpoofing")
+        assertTrue(icmp.getBoolean("needsReview"))
+        assertEquals("ICMP spoofing", icmp.getString("name"))
     }
 }

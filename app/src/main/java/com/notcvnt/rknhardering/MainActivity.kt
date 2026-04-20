@@ -200,6 +200,7 @@ class MainActivity : AppCompatActivity() {
         CDN_PULLING,
         DIRECT,
         INDIRECT,
+        ICMP,
         LOCATION,
         IP_CONSENSUS,
         BYPASS,
@@ -225,6 +226,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textCallTransportSummary: TextView
     private lateinit var stunGroupsContainer: LinearLayout
     private lateinit var findingsCallTransport: LinearLayout
+    private lateinit var cardIcmpSpoofing: MaterialCardView
+    private lateinit var iconIcmpSpoofing: ImageView
+    private lateinit var statusIcmpSpoofing: TextView
+    private lateinit var findingsIcmpSpoofing: LinearLayout
     private lateinit var cardNativeSigns: MaterialCardView
     private lateinit var iconNativeSigns: ImageView
     private lateinit var statusNativeSigns: TextView
@@ -417,6 +422,10 @@ class MainActivity : AppCompatActivity() {
         textCallTransportSummary = findViewById(R.id.textCallTransportSummary)
         stunGroupsContainer = findViewById(R.id.stunGroupsContainer)
         findingsCallTransport = findViewById(R.id.findingsCallTransport)
+        cardIcmpSpoofing = findViewById(R.id.cardIcmpSpoofing)
+        iconIcmpSpoofing = findViewById(R.id.iconIcmpSpoofing)
+        statusIcmpSpoofing = findViewById(R.id.statusIcmpSpoofing)
+        findingsIcmpSpoofing = findViewById(R.id.findingsIcmpSpoofing)
         cardNativeSigns = findViewById(R.id.cardNativeSigns)
         iconNativeSigns = findViewById(R.id.iconNativeSigns)
         statusNativeSigns = findViewById(R.id.statusNativeSigns)
@@ -495,6 +504,7 @@ class MainActivity : AppCompatActivity() {
             Triple(CATEGORY_IND, getString(R.string.main_card_indirect_signs), R.drawable.ic_lan),
             Triple(CATEGORY_NAT, getString(R.string.main_card_native_signs), R.drawable.ic_lock),
             Triple(CATEGORY_STN, getString(R.string.main_card_call_transport), R.drawable.ic_call),
+            Triple(CATEGORY_ICM, getString(R.string.main_card_icmp_spoofing), R.drawable.ic_network),
             Triple(CATEGORY_LOC, getString(R.string.main_card_location_signals), R.drawable.ic_location_on),
             Triple(CATEGORY_BYP, getString(R.string.settings_split_tunnel), R.drawable.ic_call_split),
         )
@@ -532,6 +542,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.cardIndirect
         CATEGORY_NAT -> R.id.cardNativeSigns
         CATEGORY_STN -> R.id.cardCallTransport
+        CATEGORY_ICM -> R.id.cardIcmpSpoofing
         CATEGORY_LOC -> R.id.cardLocation
         CATEGORY_BYP -> R.id.cardBypass
         else -> error("Unknown category id: $id")
@@ -545,6 +556,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.headerIndirect
         CATEGORY_NAT -> R.id.headerNativeSigns
         CATEGORY_STN -> R.id.headerCallTransport
+        CATEGORY_ICM -> R.id.headerIcmpSpoofing
         CATEGORY_LOC -> R.id.headerLocation
         CATEGORY_BYP -> R.id.headerBypass
         else -> error("Unknown category id: $id")
@@ -558,6 +570,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.headerDotIndirect
         CATEGORY_NAT -> R.id.headerDotNativeSigns
         CATEGORY_STN -> R.id.headerDotCallTransport
+        CATEGORY_ICM -> R.id.headerDotIcmpSpoofing
         CATEGORY_LOC -> R.id.headerDotLocation
         CATEGORY_BYP -> R.id.headerDotBypass
         else -> error("Unknown category id: $id")
@@ -571,6 +584,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.headerIconIndirect
         CATEGORY_NAT -> R.id.headerIconNativeSigns
         CATEGORY_STN -> R.id.headerIconCallTransport
+        CATEGORY_ICM -> R.id.headerIconIcmpSpoofing
         CATEGORY_LOC -> R.id.headerIconLocation
         CATEGORY_BYP -> R.id.headerIconBypass
         else -> error("Unknown category id: $id")
@@ -584,6 +598,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.headerTitleIndirect
         CATEGORY_NAT -> R.id.headerTitleNativeSigns
         CATEGORY_STN -> R.id.headerTitleCallTransport
+        CATEGORY_ICM -> R.id.headerTitleIcmpSpoofing
         CATEGORY_LOC -> R.id.headerTitleLocation
         CATEGORY_BYP -> R.id.headerTitleBypass
         else -> error("Unknown category id: $id")
@@ -597,6 +612,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.headerHintIndirect
         CATEGORY_NAT -> R.id.headerHintNativeSigns
         CATEGORY_STN -> R.id.headerHintCallTransport
+        CATEGORY_ICM -> R.id.headerHintIcmpSpoofing
         CATEGORY_LOC -> R.id.headerHintLocation
         CATEGORY_BYP -> R.id.headerHintBypass
         else -> error("Unknown category id: $id")
@@ -610,6 +626,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.chevronIndirect
         CATEGORY_NAT -> R.id.chevronNativeSigns
         CATEGORY_STN -> R.id.chevronCallTransport
+        CATEGORY_ICM -> R.id.chevronIcmpSpoofing
         CATEGORY_LOC -> R.id.chevronLocation
         CATEGORY_BYP -> R.id.chevronBypass
         else -> error("Unknown category id: $id")
@@ -623,6 +640,7 @@ class MainActivity : AppCompatActivity() {
         CATEGORY_IND -> R.id.bodyIndirect
         CATEGORY_NAT -> R.id.bodyNativeSigns
         CATEGORY_STN -> R.id.bodyCallTransport
+        CATEGORY_ICM -> R.id.bodyIcmpSpoofing
         CATEGORY_LOC -> R.id.bodyLocation
         CATEGORY_BYP -> R.id.bodyBypass
         else -> error("Unknown category id: $id")
@@ -1173,6 +1191,9 @@ class MainActivity : AppCompatActivity() {
         findingsCallTransport.removeAllViews()
         findingsCallTransport.visibility = View.GONE
 
+        findingsIcmpSpoofing.removeAllViews()
+        findingsIcmpSpoofing.visibility = View.GONE
+
         textNativeSignsSummary.text = ""
         textNativeSignsSummary.visibility = View.GONE
         findingsNativeSigns.removeAllViews()
@@ -1194,6 +1215,9 @@ class MainActivity : AppCompatActivity() {
             stages += RunningStage.IP_COMPARISON
             if (settings.cdnPullingEnabled) {
                 stages += RunningStage.CDN_PULLING
+            }
+            if (settings.icmpSpoofingEnabled) {
+                stages += RunningStage.ICMP
             }
         }
         stages += RunningStage.DIRECT
@@ -1237,6 +1261,20 @@ class MainActivity : AppCompatActivity() {
                 displayCdnPulling(update.result, activeCheckPrivacyMode)
                 updateTileFromCdn(update.result)
                 if (animate) animateContentReveal(textCdnPullingSummary, cdnPullingResponses)
+            }
+            is CheckUpdate.IcmpSpoofingReady -> {
+                markStageCompleted(RunningStage.ICMP)
+                ensureCardVisible(cardIcmpSpoofing, animate = false)
+                displayCategory(
+                    update.result,
+                    cardIcmpSpoofing,
+                    iconIcmpSpoofing,
+                    statusIcmpSpoofing,
+                    findingsIcmpSpoofing,
+                    activeCheckPrivacyMode,
+                )
+                updateTileFromCategory(CATEGORY_ICM, update.result)
+                if (animate) animateContentReveal(findingsIcmpSpoofing)
             }
             is CheckUpdate.DirectSignsReady -> {
                 markStageCompleted(RunningStage.DIRECT)
@@ -1320,6 +1358,7 @@ class MainActivity : AppCompatActivity() {
         RunningStage.CDN_PULLING -> CATEGORY_CDN
         RunningStage.DIRECT -> CATEGORY_DIR
         RunningStage.INDIRECT -> CATEGORY_IND
+        RunningStage.ICMP -> CATEGORY_ICM
         RunningStage.LOCATION -> CATEGORY_LOC
         RunningStage.IP_CONSENSUS -> CATEGORY_IPS
         RunningStage.BYPASS -> CATEGORY_BYP
@@ -1345,6 +1384,14 @@ class MainActivity : AppCompatActivity() {
             )
             RunningStage.IP_COMPARISON -> showIpComparisonLoading(stage)
             RunningStage.CDN_PULLING -> showCdnPullingLoading(stage)
+            RunningStage.ICMP -> showCategoryLoading(
+                stage = stage,
+                card = cardIcmpSpoofing,
+                icon = iconIcmpSpoofing,
+                status = statusIcmpSpoofing,
+                findingsContainer = findingsIcmpSpoofing,
+                hint = stageLoadingMessage(stage),
+            )
             RunningStage.DIRECT -> showCategoryLoading(
                 stage = stage,
                 card = cardDirect,
@@ -1452,6 +1499,13 @@ class MainActivity : AppCompatActivity() {
                 )
                 RunningStage.IP_COMPARISON -> showIpComparisonStopped(stage)
                 RunningStage.CDN_PULLING -> showCdnPullingStopped(stage)
+                RunningStage.ICMP -> showCategoryStopped(
+                    card = cardIcmpSpoofing,
+                    icon = iconIcmpSpoofing,
+                    status = statusIcmpSpoofing,
+                    findingsContainer = findingsIcmpSpoofing,
+                    message = stageStoppedMessage(stage),
+                )
                 RunningStage.DIRECT -> showCategoryStopped(
                     card = cardDirect,
                     icon = iconDirect,
@@ -1596,6 +1650,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.GEO_IP -> getString(R.string.main_loading_geo_ip)
             RunningStage.IP_COMPARISON -> getString(R.string.main_loading_ip_comparison)
             RunningStage.CDN_PULLING -> getString(R.string.main_loading_cdn_pulling)
+            RunningStage.ICMP -> getString(R.string.main_loading_icmp)
             RunningStage.DIRECT -> getString(R.string.main_loading_direct)
             RunningStage.INDIRECT -> getString(R.string.main_loading_indirect)
             RunningStage.LOCATION -> getString(R.string.main_loading_location)
@@ -1616,6 +1671,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.GEO_IP -> cardGeoIp
             RunningStage.IP_COMPARISON -> cardIpComparison
             RunningStage.CDN_PULLING -> cardCdnPulling
+            RunningStage.ICMP -> cardIcmpSpoofing
             RunningStage.DIRECT -> cardDirect
             RunningStage.INDIRECT -> cardIndirect
             RunningStage.LOCATION -> cardLocation
@@ -1629,6 +1685,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.GEO_IP -> statusGeoIp
             RunningStage.IP_COMPARISON -> statusIpComparison
             RunningStage.CDN_PULLING -> statusCdnPulling
+            RunningStage.ICMP -> statusIcmpSpoofing
             RunningStage.DIRECT -> statusDirect
             RunningStage.INDIRECT -> statusIndirect
             RunningStage.LOCATION -> statusLocation
@@ -2884,6 +2941,7 @@ class MainActivity : AppCompatActivity() {
         private const val CATEGORY_DIR = "dir"
         private const val CATEGORY_IND = "ind"
         private const val CATEGORY_STN = "stn"
+        private const val CATEGORY_ICM = "icmp"
         private const val CATEGORY_LOC = "loc"
         private const val CATEGORY_BYP = "byp"
         private const val CATEGORY_NAT = "nat"

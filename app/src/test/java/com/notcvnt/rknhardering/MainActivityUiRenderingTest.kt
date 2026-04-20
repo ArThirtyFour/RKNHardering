@@ -135,6 +135,24 @@ class MainActivityUiRenderingTest {
     }
 
     @Test
+    fun `prepare check session shows loading hint for icmp tile when network checks are enabled`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        invokePrivate<Unit>(
+            activity,
+            "prepareCheckSessionUi",
+            CheckSettings(networkRequestsEnabled = true),
+            false,
+        )
+
+        val tiles = getPrivateField<Map<String, Any>>(activity, "tiles")
+        val icmpTile = tiles.getValue("icmp")
+        val hint = getPrivateField<TextView>(icmpTile, "hint")
+
+        assertEquals(activity.getString(R.string.tile_hint_loading), hint.text.toString())
+    }
+
+    @Test
     fun `ip channel row shows family together with channel metadata`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         val observedIp = ObservedIp(

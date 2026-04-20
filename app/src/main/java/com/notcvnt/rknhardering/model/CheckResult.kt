@@ -24,6 +24,7 @@ enum class EvidenceSource {
     GEO_IP,
     DIRECT_NETWORK_CAPABILITIES,
     INDIRECT_NETWORK_CAPABILITIES,
+    ICMP_SPOOFING,
     SYSTEM_PROXY,
     INSTALLED_APP,
     VPN_SERVICE_DECLARATION,
@@ -323,6 +324,11 @@ data class CheckResult(
     val verdict: Verdict,
     val tunProbeDiagnostics: TunProbeDiagnostics? = null,
     val nativeSigns: CategoryResult = CategoryResult(
+        name = "",
+        detected = false,
+        findings = emptyList(),
+    ),
+    val icmpSpoofing: CategoryResult = CategoryResult(
         name = "",
         detected = false,
         findings = emptyList(),

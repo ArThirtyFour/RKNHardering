@@ -66,6 +66,7 @@ internal fun exportEmptyCheckResult(): CheckResult {
         ),
         directSigns = emptyCategory,
         indirectSigns = emptyCategory,
+        icmpSpoofing = emptyCategory,
         locationSignals = emptyCategory,
         bypassResult = BypassResult(
             proxyEndpoint = null,
@@ -228,6 +229,30 @@ internal fun exportRichCheckResult(): CheckResult {
                     summary = "STUN error from 198.51.100.7",
                     confidence = EvidenceConfidence.MEDIUM,
                     experimental = true,
+                ),
+            ),
+        ),
+        icmpSpoofing = CategoryResult(
+            name = "ICMP spoofing",
+            detected = false,
+            needsReview = true,
+            findings = listOf(
+                Finding(
+                    description = "instagram.com replied and google.com was too fast",
+                    needsReview = true,
+                    source = EvidenceSource.ICMP_SPOOFING,
+                ),
+                Finding(
+                    description = "Blocked target instagram.com (157.240.22.174): 3/3 replies",
+                    isInformational = true,
+                ),
+            ),
+            evidence = listOf(
+                EvidenceItem(
+                    source = EvidenceSource.ICMP_SPOOFING,
+                    detected = true,
+                    confidence = EvidenceConfidence.MEDIUM,
+                    description = "ICMP route behavior looked inconsistent",
                 ),
             ),
         ),

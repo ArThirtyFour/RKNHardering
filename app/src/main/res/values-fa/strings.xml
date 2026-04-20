@@ -151,6 +151,7 @@
     <string name="main_card_call_transport_stun_ipv6">IPv6</string>
     <string name="main_card_call_transport_stun_no_response">بدون پاسخ</string>
     <string name="main_card_call_transport_stun_error">خطا</string>
+    <string name="main_card_icmp_spoofing">جعل ICMP β</string>
     <string name="main_card_location_signals">نشانه‌های مکان</string>
     <string name="main_card_native_signs">نشانه‌های بومی</string>
     <string name="main_verdict_details">جزئیات</string>
@@ -177,6 +178,7 @@
     <string name="main_loading_geo_ip">در حال بررسی کشور، ASN و نشانه‌های میزبانی.</string>
     <string name="main_loading_ip_comparison">در حال مقایسه IP عمومی از طریق چند سرویس مستقل.</string>
     <string name="main_loading_cdn_pulling">در حال بررسی اینکه endpointهای مسدود یا CDN-backed چه داده‌ای درباره شبکه شما برمی‌گردانند.</string>
+    <string name="main_loading_icmp">در حال resolve و ping کردن میزبان‌های مسدود و کنترلی از طریق مسیر فعال.</string>
     <string name="main_loading_direct">در حال جست‌وجوی نشانه‌های مستقیم VPN، proxy و کلاینت‌های نصب‌شده.</string>
     <string name="main_loading_indirect">در حال بررسی اینترفیس‌ها، DNS، مسیرها و نشانه‌های فنی محلی.</string>
     <string name="main_loading_location">در حال جمع‌آوری نشانه‌های اپراتور، دکل و Wi-Fiهای نزدیک.</string>
@@ -229,6 +231,19 @@
     <string name="narrative_explanation_exposure_local_proxy">فقط یک proxy/API محلی روی دستگاه دیده شد، بدون آدرس نقطه پایانی راه‌دور.</string>
     <string name="narrative_explanation_exposure_technical">فقط نشانه‌های فنی شبکه و مسیریابی موجود بود، بدون آدرس سرور.</string>
     <string name="narrative_explanation_exposure_insufficient">نه آدرس سرور و نه IP عمومی به دست نیامد.</string>
+    <string name="narrative_reason_icmp_signal">پاسخ‌های ICMP یا زمان رفت‌وبرگشت غیرواقعی دیده شد و نیاز به بررسی دستی دارد.</string>
+
+    <string name="checker_icmp_summary_clean">%1$s پاسخ نداد و %2$s بالاتر از آستانه RTT باقی ماند (میانگین %3$s)</string>
+    <string name="checker_icmp_summary_blocked_replied">%1$s به ICMP پاسخ داد، در حالی که انتظار می‌رود روی مسیر روسیه بی‌پاسخ بماند</string>
+    <string name="checker_icmp_summary_control_too_fast">%1$s با RTT مشکوکاً پایین پاسخ داد (کمینه %2$s، میانگین %3$s)</string>
+    <string name="checker_icmp_summary_both_suspicious">%1$s پاسخ داد و %2$s بیش از حد سریع بود (کمینه %3$s، میانگین %4$s)</string>
+    <string name="checker_icmp_summary_inconclusive">بررسی ICMP قطعی نیست، چون %1$s پاسخ نداد</string>
+    <string name="checker_icmp_summary_unavailable">پینگ سیستمی در دسترس نبود یا خروجی آن قابل تفسیر نبود.</string>
+    <string name="checker_icmp_target_blocked">هدف مسدودشده %1$s (%2$s): %3$d/%4$d پاسخ</string>
+    <string name="checker_icmp_target_control">هدف کنترلی %1$s (%2$s): %3$d/%4$d پاسخ، کمینه %5$s، میانگین %6$s، بیشینه %7$s</string>
+    <string name="checker_icmp_evidence_both">%1$s پاسخ داد و RTT برای %2$s پایین‌تر از آستانه مورد انتظار ماند</string>
+    <string name="checker_icmp_evidence_blocked_replied">%1$s روی مسیر فعال از طریق ICMP پاسخ داد</string>
+    <string name="checker_icmp_evidence_control_too_fast">RTT برای %1$s روی مسیر فعال پایین‌تر از آستانه مورد انتظار ماند</string>
 
     <string name="narrative_meaning_detected">نتیجه قرمز یعنی بررسی خودکار نشانه‌های کافی از دور زدن را جمع کرده است.</string>
     <string name="narrative_meaning_needs_review">نتیجه زرد یعنی نشانه‌هایی وجود دارد، اما نیاز به بررسی دستی دارد.</string>

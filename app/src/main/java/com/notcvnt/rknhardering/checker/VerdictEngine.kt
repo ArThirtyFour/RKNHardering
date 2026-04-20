@@ -47,6 +47,7 @@ object VerdictEngine {
         bypassResult: BypassResult,
         ipConsensus: IpConsensusResult,
         nativeSigns: CategoryResult = CategoryResult(name = "", detected = false, findings = emptyList()),
+        icmpSpoofing: CategoryResult = CategoryResult(name = "", detected = false, findings = emptyList()),
     ): Verdict {
         // R1
         if (bypassResult.evidence.any { it.detected && it.source in HARD_DETECT_BYPASS }) {
@@ -118,6 +119,7 @@ object VerdictEngine {
         if (matrix == Verdict.NOT_DETECTED && (
                 bypassResult.needsReview ||
                     hasActionableCallTransportLeak ||
+                    icmpSpoofing.needsReview ||
                     nativeReviewHit ||
                     ipConsensus.needsReview ||
                     ipConsensus.channelConflict.isNotEmpty() ||

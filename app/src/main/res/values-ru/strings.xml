@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nЕсли включён CDN pulling, приложение дополнительно отправит HTTPS-запросы к redirector.googlevideo.com, rutracker.org и meduza.io, чтобы проверить, какой внешний IP и trace-данные эти точки вернут.\n\nЕсли включена проверка утечек call transport, приложение дополнительно отправит UDP/STUN-запросы к встроенным Telegram-целям. Цели WhatsApp используются только в debug или experimental сборках.\n\nЕсли включена отладочная диагностика, приложение сможет сформировать копируемый диагностический отчёт по последней завершённой проверке, даже если она прошла успешно. Отчёт хранится только в памяти, пока вы его не скопируете. Ответы CDN pulling тоже попадут в этот отчёт.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
+    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nЕсли включён CDN pulling, приложение дополнительно отправит HTTPS-запросы к redirector.googlevideo.com, rutracker.org и meduza.io, чтобы проверить, какой внешний IP и trace-данные эти точки вернут.\n\nЕсли включена проверка утечек call transport, приложение дополнительно отправит UDP/STUN-запросы к встроенным Telegram-целям. Цели WhatsApp используются только в debug или experimental сборках.\n\nЕсли включена проверка подмены ICMP, приложение дополнительно выполнит DNS-резолв и ping для instagram.com и google.com, чтобы сравнить доступность заблокированной цели и подозрительно низкие RTT.\n\nЕсли включена отладочная диагностика, приложение сможет сформировать копируемый диагностический отчёт по последней завершённой проверке, даже если она прошла успешно. Отчёт хранится только в памяти, пока вы его не скопируете. Ответы CDN pulling тоже попадут в этот отчёт.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
 
     <string name="settings_title">Настройки</string>
     <string name="settings_section_checks">Проверки</string>
@@ -49,9 +49,9 @@
     <string name="settings_port_full">Полный</string>
     <string name="settings_port_custom">Кастомный</string>
     <string name="settings_network_requests">Сетевые запросы</string>
-    <string name="settings_network_requests_desc">GeoIP, IP сравнение, CDN pulling, BeaconDB, проверка call transport</string>
+    <string name="settings_network_requests_desc">GeoIP, IP сравнение, CDN pulling, BeaconDB, проверка call transport, подмена ICMP</string>
     <string name="settings_network_disable_title">Отключить сетевые запросы?</string>
-    <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Проверка CDN pulling отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n• Проверка утечек call transport отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
+    <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Проверка CDN pulling отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n• Проверка утечек call transport отключится\n• Проверка подмены ICMP отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
     <string name="settings_network_disable_confirm">Отключить</string>
     <string name="settings_cdn_pulling">CDN pulling</string>
     <string name="settings_cdn_pulling_desc">Отправляет HTTPS-запросы к Google/YouTube redirector и Cloudflare trace endpoints.</string>
@@ -151,6 +151,7 @@
     <string name="main_card_call_transport_stun_ipv6">IPv6</string>
     <string name="main_card_call_transport_stun_no_response">Нет ответа</string>
     <string name="main_card_call_transport_stun_error">Ошибка</string>
+    <string name="main_card_icmp_spoofing">Подмена ICMP β</string>
     <string name="main_card_location_signals">Сигналы местоположения</string>
     <string name="main_card_native_signs">Нативные признаки</string>
     <string name="main_verdict_details">Подробнее</string>
@@ -177,6 +178,7 @@
     <string name="main_loading_geo_ip">Сверяем страну, ASN и признаки хостинга.</string>
     <string name="main_loading_ip_comparison">Сравниваем внешний IP через несколько независимых сервисов.</string>
     <string name="main_loading_cdn_pulling">Проверяем, какие сетевые данные вернут заблокированные или CDN-backed endpoints.</string>
+    <string name="main_loading_icmp">Резолвим и пингуем заблокированную и контрольную цели через активный маршрут.</string>
     <string name="main_loading_direct">Ищем прямые признаки VPN, прокси и установленных клиентов.</string>
     <string name="main_loading_indirect">Проверяем интерфейсы, DNS, маршруты и локальные технические сигналы.</string>
     <string name="main_loading_location">Собираем сигналы оператора, вышек и ближайших Wi-Fi точек.</string>
@@ -282,6 +284,7 @@
     <string name="narrative_reason_direct_signs">Найдены прямые признаки локального proxy/VPN.</string>
     <string name="narrative_reason_indirect_signs">Найдены косвенные признаки туннеля, маршрутов или DNS-подмены.</string>
     <string name="narrative_reason_call_transport_signal">Цель call transport ответила и раскрыла mapped/public network data.</string>
+    <string name="narrative_reason_icmp_signal">ICMP-доступность или RTT выглядели нетипично для обычного российского маршрута.</string>
     <string name="narrative_reason_fallback_detected">Вердикт собран из сочетания нескольких сигналов проверки.</string>
     <string name="narrative_reason_fallback_review">Сигналы частичные или противоречивые, поэтому нужен ручной разбор.</string>
     <string name="narrative_reason_fallback_clean">Решающие сигналы обхода не найдены.</string>
@@ -509,6 +512,17 @@
 
     <!-- NativeSignsChecker -->
     <string name="checker_native_category_name">Нативные признаки β</string>
+    <string name="checker_icmp_summary_clean">%1$s не ответил, а у %2$s RTT остался выше порога (avg %3$s)</string>
+    <string name="checker_icmp_summary_blocked_replied">%1$s ответил на ICMP, хотя для российского маршрута ожидается отсутствие ответа</string>
+    <string name="checker_icmp_summary_control_too_fast">%1$s ответил с подозрительно низким RTT (min %2$s, avg %3$s)</string>
+    <string name="checker_icmp_summary_both_suspicious">%1$s ответил, а у %2$s RTT оказался слишком низким (min %3$s, avg %4$s)</string>
+    <string name="checker_icmp_summary_inconclusive">ICMP-проверка неинформативна: %1$s не ответил</string>
+    <string name="checker_icmp_summary_unavailable">Проверка подмены ICMP недоступна на этом устройстве</string>
+    <string name="checker_icmp_target_blocked">Заблокированная цель %1$s (%2$s): ответов %3$d/%4$d</string>
+    <string name="checker_icmp_target_control">Контрольная цель %1$s (%2$s): ответов %3$d/%4$d, min %5$s, avg %6$s, max %7$s</string>
+    <string name="checker_icmp_evidence_both">%1$s ответил, а RTT у %2$s оказался ниже ожидаемого порога</string>
+    <string name="checker_icmp_evidence_blocked_replied">%1$s ответил по ICMP через активный маршрут</string>
+    <string name="checker_icmp_evidence_control_too_fast">%1$s показал RTT ниже ожидаемого порога на активном маршруте</string>
     <string name="checker_native_card_title">Нативные низкоуровневые проверки β</string>
     <string name="checker_native_unavailable">Нативная библиотека не загружена; проверки недоступны.</string>
     <string name="checker_native_unavailable_with_reason">Нативная библиотека не загружена: %1$s</string>

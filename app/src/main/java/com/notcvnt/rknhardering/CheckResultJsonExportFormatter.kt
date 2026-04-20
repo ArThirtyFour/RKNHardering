@@ -74,6 +74,7 @@ internal object CheckResultJsonExportFormatter {
                 put("cdnPulling", cdnPullingToJson(snapshot.result.cdnPulling, snapshot.privacyMode))
                 put("directSigns", categoryToJson(snapshot.result.directSigns, snapshot.privacyMode))
                 put("indirectSigns", categoryToJson(snapshot.result.indirectSigns, snapshot.privacyMode))
+                put("icmpSpoofing", categoryToJson(snapshot.result.icmpSpoofing, snapshot.privacyMode))
                 put("locationSignals", categoryToJson(snapshot.result.locationSignals, snapshot.privacyMode))
                 put("bypass", bypassToJson(context, snapshot.result.bypassResult, snapshot.privacyMode))
             },
