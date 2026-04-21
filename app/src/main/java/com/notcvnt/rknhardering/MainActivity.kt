@@ -200,6 +200,7 @@ class MainActivity : AppCompatActivity() {
         CDN_PULLING,
         DIRECT,
         INDIRECT,
+        NATIVE_SIGNS,
         ICMP,
         LOCATION,
         IP_CONSENSUS,
@@ -1271,6 +1272,7 @@ class MainActivity : AppCompatActivity() {
         }
         stages += RunningStage.DIRECT
         stages += RunningStage.INDIRECT
+        stages += RunningStage.NATIVE_SIGNS
         stages += RunningStage.LOCATION
         if (settings.networkRequestsEnabled || settings.splitTunnelEnabled) {
             stages += RunningStage.IP_CONSENSUS
@@ -1377,6 +1379,7 @@ class MainActivity : AppCompatActivity() {
                 if (animate) animateContentReveal(findingsLocation, locationInfoSection, locationDivider)
             }
             is CheckUpdate.NativeSignsReady -> {
+                markStageCompleted(RunningStage.NATIVE_SIGNS)
                 displayNativeSigns(update.result, activeCheckPrivacyMode)
                 updateTileFromCategory(CATEGORY_NAT, update.result)
                 if (animate) animateContentReveal(findingsNativeSigns, textNativeSignsSummary)
@@ -1407,6 +1410,7 @@ class MainActivity : AppCompatActivity() {
         RunningStage.CDN_PULLING -> CATEGORY_CDN
         RunningStage.DIRECT -> CATEGORY_DIR
         RunningStage.INDIRECT -> CATEGORY_IND
+        RunningStage.NATIVE_SIGNS -> CATEGORY_NAT
         RunningStage.ICMP -> CATEGORY_ICM
         RunningStage.LOCATION -> CATEGORY_LOC
         RunningStage.IP_CONSENSUS -> CATEGORY_IPS
@@ -1457,6 +1461,14 @@ class MainActivity : AppCompatActivity() {
                 icon = iconIndirect,
                 status = statusIndirect,
                 findingsContainer = findingsIndirect,
+                hint = stageLoadingMessage(stage),
+            )
+            RunningStage.NATIVE_SIGNS -> showCategoryLoading(
+                stage = stage,
+                card = cardNativeSigns,
+                icon = iconNativeSigns,
+                status = statusNativeSigns,
+                findingsContainer = findingsNativeSigns,
                 hint = stageLoadingMessage(stage),
             )
             RunningStage.LOCATION -> showCategoryLoading(
@@ -1569,6 +1581,13 @@ class MainActivity : AppCompatActivity() {
                     icon = iconIndirect,
                     status = statusIndirect,
                     findingsContainer = findingsIndirect,
+                    message = stageStoppedMessage(stage),
+                )
+                RunningStage.NATIVE_SIGNS -> showCategoryStopped(
+                    card = cardNativeSigns,
+                    icon = iconNativeSigns,
+                    status = statusNativeSigns,
+                    findingsContainer = findingsNativeSigns,
                     message = stageStoppedMessage(stage),
                 )
                 RunningStage.LOCATION -> showCategoryStopped(
@@ -1702,6 +1721,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.ICMP -> getString(R.string.main_loading_icmp)
             RunningStage.DIRECT -> getString(R.string.main_loading_direct)
             RunningStage.INDIRECT -> getString(R.string.main_loading_indirect)
+            RunningStage.NATIVE_SIGNS -> getString(R.string.main_loading_native_signs)
             RunningStage.LOCATION -> getString(R.string.main_loading_location)
             RunningStage.IP_CONSENSUS -> getString(R.string.main_loading_ip_comparison)
             RunningStage.BYPASS -> getString(R.string.main_loading_bypass)
@@ -1723,6 +1743,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.ICMP -> cardIcmpSpoofing
             RunningStage.DIRECT -> cardDirect
             RunningStage.INDIRECT -> cardIndirect
+            RunningStage.NATIVE_SIGNS -> cardNativeSigns
             RunningStage.LOCATION -> cardLocation
             RunningStage.IP_CONSENSUS -> cardIpChannels
             RunningStage.BYPASS -> cardBypass
@@ -1737,6 +1758,7 @@ class MainActivity : AppCompatActivity() {
             RunningStage.ICMP -> statusIcmpSpoofing
             RunningStage.DIRECT -> statusDirect
             RunningStage.INDIRECT -> statusIndirect
+            RunningStage.NATIVE_SIGNS -> statusNativeSigns
             RunningStage.LOCATION -> statusLocation
             RunningStage.IP_CONSENSUS -> statusGeoIp
             RunningStage.BYPASS -> statusBypass
@@ -3055,6 +3077,9 @@ class MainActivity : AppCompatActivity() {
             .rotation(if (expanded) 90f else 0f)
             .setDuration(200L)
             .start()
+        if (expanded) {
+            syncExpandedCategoryHint(holder.id)
+        }
     }
 
     private fun setTileStatus(id: String, status: Int, hint: String?) {
@@ -3187,6 +3212,86 @@ class MainActivity : AppCompatActivity() {
         val holder = tiles[CATEGORY_STN] ?: return false
         return holder.statusDot.tag == TILE_STATUS_NEUTRAL &&
             holder.hint.text?.toString() == getString(R.string.tile_hint_loading)
+    }
+
+    private fun syncExpandedCategoryHint(id: String) {
+        when (id) {
+            CATEGORY_GEO -> {
+                if (geoIpInfoSection.childCount > 0 || findingsGeoIp.childCount > 0) return
+                syncHintOnlyContainer(findingsGeoIp, previewMessageForCategory(id))
+            }
+            CATEGORY_IPC -> {
+                if (textIpComparisonSummary.text?.isNotBlank() == true || ipComparisonGroups.childCount > 0) return
+                textIpComparisonSummary.text = previewMessageForCategory(id)
+                textIpComparisonSummary.visibility = View.VISIBLE
+            }
+            CATEGORY_CDN -> {
+                if (textCdnPullingSummary.text?.isNotBlank() == true || cdnPullingResponses.childCount > 0) return
+                textCdnPullingSummary.text = previewMessageForCategory(id)
+                textCdnPullingSummary.visibility = View.VISIBLE
+            }
+            CATEGORY_DIR -> {
+                if (directInfoSection.childCount > 0 || findingsDirect.childCount > 0) return
+                syncHintOnlyContainer(findingsDirect, previewMessageForCategory(id))
+            }
+            CATEGORY_IND -> {
+                if (findingsIndirect.childCount > 0) return
+                syncHintOnlyContainer(findingsIndirect, previewMessageForCategory(id))
+            }
+            CATEGORY_NAT -> {
+                if ((textNativeSignsSummary.text?.isNotBlank() == true && textNativeSignsSummary.visibility == View.VISIBLE) || findingsNativeSigns.childCount > 0) return
+                syncHintOnlyContainer(findingsNativeSigns, previewMessageForCategory(id))
+            }
+            CATEGORY_STN -> {
+                val hasSummary = textCallTransportSummary.visibility == View.VISIBLE &&
+                    textCallTransportSummary.text?.isNotBlank() == true
+                if (hasSummary || stunGroupsContainer.childCount > 0 || findingsCallTransport.childCount > 0) return
+                syncHintOnlyContainer(
+                    findingsCallTransport,
+                    if (isCallTransportTileLoading()) {
+                        getString(R.string.main_loading_call_transport)
+                    } else {
+                        previewMessageForCategory(id)
+                    },
+                )
+            }
+            CATEGORY_ICM -> {
+                if (findingsIcmpSpoofing.childCount > 0) return
+                syncHintOnlyContainer(findingsIcmpSpoofing, previewMessageForCategory(id))
+            }
+            CATEGORY_LOC -> {
+                if (locationInfoSection.childCount > 0 || findingsLocation.childCount > 0) return
+                syncHintOnlyContainer(findingsLocation, previewMessageForCategory(id))
+            }
+            CATEGORY_BYP -> {
+                if ((textBypassProgress.text?.isNotBlank() == true && textBypassProgress.visibility == View.VISIBLE) || findingsBypass.childCount > 0) return
+                textBypassProgress.text = previewMessageForCategory(id)
+                textBypassProgress.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun previewMessageForCategory(id: String): String {
+        return when (id) {
+            CATEGORY_GEO -> getString(R.string.main_preview_geo_ip)
+            CATEGORY_IPC -> getString(R.string.main_preview_ip_comparison)
+            CATEGORY_CDN -> getString(R.string.main_preview_cdn_pulling)
+            CATEGORY_DIR -> getString(R.string.main_preview_direct)
+            CATEGORY_IND -> getString(R.string.main_preview_indirect)
+            CATEGORY_NAT -> getString(R.string.main_preview_native_signs)
+            CATEGORY_STN -> getString(R.string.main_preview_call_transport)
+            CATEGORY_ICM -> getString(R.string.main_preview_icmp)
+            CATEGORY_LOC -> getString(R.string.main_preview_location)
+            CATEGORY_BYP -> getString(R.string.main_preview_bypass)
+            else -> getString(R.string.tile_hint_placeholder)
+        }
+    }
+
+    private fun syncHintOnlyContainer(container: LinearLayout, message: String) {
+        if (container.childCount > 0) return
+        container.removeAllViews()
+        container.addView(createLoadingHintView(message))
+        container.visibility = View.VISIBLE
     }
 
     private fun buildTileHintForCategory(category: CategoryResult): String {

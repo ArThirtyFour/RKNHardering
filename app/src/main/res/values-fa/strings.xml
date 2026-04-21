@@ -177,12 +177,25 @@
     <string name="main_loading_status_checking">در حال بررسی</string>
     <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
+    <string name="main_preview_geo_ip">بررسی کشور، ASN و نشانه‌های میزبانی انجام خواهد شد.</string>
+    <string name="main_preview_ip_comparison">مقایسه IP عمومی از طریق چند سرویس مستقل انجام خواهد شد.</string>
+    <string name="main_preview_cdn_pulling">بررسی خواهد شد که endpointهای مسدود یا CDN-backed چه داده‌ای درباره شبکه شما برمی‌گردانند.</string>
+    <string name="main_preview_direct">جست‌وجوی نشانه‌های مستقیم VPN، proxy و کلاینت‌های نصب‌شده انجام خواهد شد.</string>
+    <string name="main_preview_indirect">بررسی اینترفیس‌ها، DNS، مسیرها و نشانه‌های فنی محلی انجام خواهد شد.</string>
+    <string name="main_preview_native_signs">بررسی اینترفیس‌های بومی، مسیرها و نشانه‌های سطح‌پایین کتابخانه‌ها انجام خواهد شد.</string>
+    <string name="main_preview_call_transport">پاسخ‌های STUN serverها و نشانه‌های نشت call transport بررسی خواهند شد.</string>
+    <string name="main_preview_icmp">resolve و ping میزبان‌های مسدود و کنترلی از طریق مسیر فعال انجام خواهد شد.</string>
+    <string name="main_preview_location">جمع‌آوری نشانه‌های اپراتور، دکل و Wi-Fiهای نزدیک انجام خواهد شد.</string>
+    <string name="main_preview_bypass">جست‌وجوی split tunnel bypass محلی و proxy endpointهای در دسترس انجام خواهد شد.</string>
+
     <string name="main_loading_geo_ip">در حال بررسی کشور، ASN و نشانه‌های میزبانی.</string>
     <string name="main_loading_ip_comparison">در حال مقایسه IP عمومی از طریق چند سرویس مستقل.</string>
     <string name="main_loading_cdn_pulling">در حال بررسی اینکه endpointهای مسدود یا CDN-backed چه داده‌ای درباره شبکه شما برمی‌گردانند.</string>
     <string name="main_loading_icmp">در حال resolve و ping کردن میزبان‌های مسدود و کنترلی از طریق مسیر فعال.</string>
     <string name="main_loading_direct">در حال جست‌وجوی نشانه‌های مستقیم VPN، proxy و کلاینت‌های نصب‌شده.</string>
     <string name="main_loading_indirect">در حال بررسی اینترفیس‌ها، DNS، مسیرها و نشانه‌های فنی محلی.</string>
+    <string name="main_loading_native_signs">در حال بررسی اینترفیس‌های بومی، مسیرها و نشانه‌های سطح‌پایین کتابخانه‌ها.</string>
+    <string name="main_loading_call_transport">در حال بررسی پاسخ‌های STUN serverها و نشانه‌های نشت call transport.</string>
     <string name="main_loading_location">در حال جمع‌آوری نشانه‌های اپراتور، دکل و Wi-Fiهای نزدیک.</string>
     <string name="main_loading_bypass">در حال جست‌وجوی split tunnel bypass محلی و proxy endpointهای در دسترس.</string>
 

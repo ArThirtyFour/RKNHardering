@@ -177,12 +177,25 @@
     <string name="main_loading_status_checking">Проверяется</string>
     <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
+    <string name="main_preview_geo_ip">Будет выполнена сверка страны, ASN и признаков хостинга.</string>
+    <string name="main_preview_ip_comparison">Будет выполнено сравнение внешнего IP через несколько независимых сервисов.</string>
+    <string name="main_preview_cdn_pulling">Будет проверено, какие сетевые данные вернут заблокированные или CDN-backed endpoints.</string>
+    <string name="main_preview_direct">Будет проведен поиск прямых признаков VPN, прокси и установленных клиентов.</string>
+    <string name="main_preview_indirect">Будет выполнена проверка интерфейсов, DNS, маршрутов и локальных технических сигналов.</string>
+    <string name="main_preview_native_signs">Будет выполнена проверка нативных интерфейсов, маршрутов и низкоуровневых сигналов библиотек.</string>
+    <string name="main_preview_call_transport">Будут проверены ответы STUN-серверов и сигналы утечки call transport.</string>
+    <string name="main_preview_icmp">Будет выполнен резолв и пинг заблокированной и контрольной цели через активный маршрут.</string>
+    <string name="main_preview_location">Будет выполнен сбор сигналов оператора, вышек и ближайших Wi-Fi точек.</string>
+    <string name="main_preview_bypass">Будет выполнен поиск локального split tunnel bypass и доступных proxy endpoints.</string>
+
     <string name="main_loading_geo_ip">Сверяем страну, ASN и признаки хостинга.</string>
     <string name="main_loading_ip_comparison">Сравниваем внешний IP через несколько независимых сервисов.</string>
     <string name="main_loading_cdn_pulling">Проверяем, какие сетевые данные вернут заблокированные или CDN-backed endpoints.</string>
     <string name="main_loading_icmp">Резолвим и пингуем заблокированную и контрольную цели через активный маршрут.</string>
     <string name="main_loading_direct">Ищем прямые признаки VPN, прокси и установленных клиентов.</string>
     <string name="main_loading_indirect">Проверяем интерфейсы, DNS, маршруты и локальные технические сигналы.</string>
+    <string name="main_loading_native_signs">Проверяем нативные интерфейсы, маршруты и низкоуровневые сигналы библиотек.</string>
+    <string name="main_loading_call_transport">Проверяем ответы STUN-серверов и сигналы утечки call transport.</string>
     <string name="main_loading_location">Собираем сигналы оператора, вышек и ближайших Wi-Fi точек.</string>
     <string name="main_loading_bypass">Ищем локальный split tunnel bypass и доступные proxy endpoints.</string>
 
