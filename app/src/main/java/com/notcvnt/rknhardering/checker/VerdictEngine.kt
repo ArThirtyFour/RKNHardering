@@ -17,7 +17,7 @@ object VerdictEngine {
         EvidenceSource.VPN_NETWORK_BINDING,
     )
 
-    private val HARD_DETECT_DIRECT = setOf(
+    private val MATRIX_DIRECT_SOURCES = setOf(
         EvidenceSource.DIRECT_NETWORK_CAPABILITIES,
         EvidenceSource.SYSTEM_PROXY,
     )
@@ -54,10 +54,7 @@ object VerdictEngine {
             return Verdict.DETECTED
         }
 
-        // R2
-        if (directSigns.evidence.any { it.detected && it.source in HARD_DETECT_DIRECT }) {
-            return Verdict.DETECTED
-        }
+        // R2 check removed (MATRIX_DIRECT_SOURCES moved to R5)
 
         // R3
         if (ipConsensus.probeTargetDivergence) {
@@ -96,15 +93,21 @@ object VerdictEngine {
             return Verdict.NEEDS_REVIEW
         }
 
-        // R5 — 2-bit matrix (geo x indirect)
+        // R5 — 3-bit matrix (geo x direct x indirect)
         val geoHit = geo?.outsideRu == true
+        val directHit = directSigns.evidence.any { it.detected && it.source in MATRIX_DIRECT_SOURCES }
         val indirectHit = indirectSigns.evidence.any { it.detected && it.source in MATRIX_INDIRECT_SOURCES } ||
             nativeSigns.evidence.any { it.detected && it.source in MATRIX_INDIRECT_SOURCES }
         val matrix = when {
-            !geoHit && !indirectHit -> Verdict.NOT_DETECTED
-            !geoHit && indirectHit -> Verdict.NOT_DETECTED
-            geoHit && !indirectHit -> Verdict.NEEDS_REVIEW
-            else -> Verdict.DETECTED
+            !geoHit && !directHit && !indirectHit -> Verdict.NOT_DETECTED
+            !geoHit && directHit && !indirectHit -> Verdict.NOT_DETECTED
+            !geoHit && !directHit && indirectHit -> Verdict.NOT_DETECTED
+            geoHit && !directHit && !indirectHit -> Verdict.NEEDS_REVIEW
+            !geoHit && directHit && indirectHit -> Verdict.NEEDS_REVIEW
+            geoHit && directHit && !indirectHit -> Verdict.DETECTED
+            geoHit && !directHit && indirectHit -> Verdict.DETECTED
+            geoHit && directHit && indirectHit -> Verdict.DETECTED
+            else -> Verdict.NOT_DETECTED
         }
 
         // R6 — needs-review fallbacks

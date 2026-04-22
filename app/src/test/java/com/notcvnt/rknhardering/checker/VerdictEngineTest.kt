@@ -34,7 +34,7 @@ class VerdictEngineTest {
     }
 
     @Test
-    fun `R2 transport_vpn evidence alone yields detected`() {
+    fun `R5 transport_vpn evidence alone yields not detected`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = category(),
             directSigns = directCategory(true),
@@ -43,7 +43,7 @@ class VerdictEngineTest {
             bypassResult = bypass(),
             ipConsensus = IpConsensusResult.empty(),
         )
-        assertEquals(Verdict.DETECTED, verdict)
+        assertEquals(Verdict.NOT_DETECTED, verdict)
     }
 
     @Test
