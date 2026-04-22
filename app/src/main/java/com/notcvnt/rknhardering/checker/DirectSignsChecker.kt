@@ -89,8 +89,6 @@ object DirectSignsChecker {
         evidence += appDetection.evidence
         matchedApps += appDetection.matchedApps
         if (appDetection.matchedApps.isNotEmpty()) {
-            // Installed VPN-like apps are a real signal for the Direct signs category,
-            // even when they are informational-only findings.
             needsReview = true
         }
 
