@@ -121,11 +121,11 @@ API: `ConnectivityManager.getNetworkCapabilities(activeNetwork)`
 
 #### 3.3 Установленные VPN/Proxy-приложения (`InstalledVpnAppDetector`)
 
-Модуль проверяет два источника:
+Модуль проверяет три источника:
 
 - известные сигнатуры пакетов из [`VpnAppCatalog`](app/src/main/java/com/notcvnt/rknhardering/vpn/VpnAppCatalog.kt);
 - приложения, которые объявляют `VpnService.SERVICE_INTERFACE` через `PackageManager.queryIntentServices`.
-
+- в прилоэении , есть "VPN" в названи
 Это диагностические сигналы установки или декларации `VpnService`, а не подтверждение активного туннеля. Совпадения переводят категорию в `needsReview`, но сами по себе не делают `DirectSignsChecker.detected = true`.
 
 ---
