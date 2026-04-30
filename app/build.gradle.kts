@@ -39,11 +39,7 @@ fun calculateAppVersionCode(versionName: String): Int {
 android {
     namespace = "com.notcvnt.rknhardering"
     ndkVersion = nativeNdkVersion
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.notcvnt.rknhardering"
