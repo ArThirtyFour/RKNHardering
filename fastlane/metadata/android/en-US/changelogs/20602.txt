@@ -1,0 +1,1 @@
+Added many new VPN clients to catalog (Karing, Exclave, v2box, v2RayTun, CatBox, MikuBox, AeroBox, Husi, FireflyVPN, avoVPN and others). Fixed network check speed. Fixed minor UI issues. Fixed TUN active probe 404. Fixed root detector in native checks. Added opt-out for auto-updates.

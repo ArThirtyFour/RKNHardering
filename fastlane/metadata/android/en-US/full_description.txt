@@ -1,0 +1,18 @@
+RKNHardering is an Android application that detects VPN and proxy usage on a device, implementing the Russian Federal Service for Supervision of Communications (RKN) methodology for identifying circumvention tools.
+
+The app runs nine independent detection modules in parallel and produces a combined verdict:
+
+- GeoIP — checks the public IP against GeoIP databases and hosting/proxy signal providers
+- IP Comparison — compares responses from RU and non-RU public IP checkers
+- Direct Signs — inspects NetworkCapabilities, system proxy settings, and installed VPN apps
+- Indirect Signs — analyzes network interfaces, routing table, DNS, dumpsys VPN output, and localhost proxy listeners
+- Location Signals — reads MCC/SIM/cell/Wi-Fi data and queries BeaconDB for geolocation
+- Bypass Check — scans localhost for open SOCKS5/HTTP proxies, Xray gRPC API endpoints, and detects underlying network leaks
+- CDN Pulling — sends HTTPS requests to trace endpoints to determine the apparent public IP
+- Call Transport — checks STUN and MTProto availability to detect traffic tunneling
+- Native Signs — performs JNI-level checks of interfaces, routes, /proc/self/maps hook markers, and root indicators
+
+The final verdict (NOT DETECTED / NEEDS REVIEW / DETECTED) is calculated by VerdictEngine using a weighted combination of the module results.
+
+Minimum Android version: 8.0 (API 26).
+Source code: https://github.com/xtclovver/RKNHardering

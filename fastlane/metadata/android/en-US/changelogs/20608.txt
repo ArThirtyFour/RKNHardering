@@ -1,0 +1,1 @@
+Version 2.6.8: replaced Java toolchain with sourceCompatibility for F-Droid build compatibility.

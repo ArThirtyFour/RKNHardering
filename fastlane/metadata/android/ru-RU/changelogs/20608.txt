@@ -1,0 +1,1 @@
+Версия 2.6.8: замена Java toolchain на sourceCompatibility для совместимости со сборкой F-Droid.

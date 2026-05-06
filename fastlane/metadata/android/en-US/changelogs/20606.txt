@@ -1,0 +1,1 @@
+Decreased Gradle and AGP version for F-Droid build compatibility.

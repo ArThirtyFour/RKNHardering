@@ -1,0 +1,1 @@
+Fixed VerdictEngine handling of corporate VPN scenarios in Russia. Added detection of apps with "VPN" in their name. Fixed debug settings regression.

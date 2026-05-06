@@ -1,0 +1,1 @@
+Added detection of authorized Happ proxies. Added HUSI-like scan mode.

@@ -1,0 +1,1 @@
+Added ICMP check (beta). Redesigned UI. Added IP consensus across multiple checkers. Added update checker. Added native low-level checks (JNI). Fixed false positives on LTE and carrier internal network interfaces. Fixed TUN probe DNS mismatch false positives. Improved verdict rules (R1–R7).

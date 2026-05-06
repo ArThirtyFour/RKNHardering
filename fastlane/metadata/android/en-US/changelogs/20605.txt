@@ -1,0 +1,1 @@
+Added color settings for users with color vision deficiency (CVD). Added links to Matrix chat. Fixed bugs and improved unit test coverage.
