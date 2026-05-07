@@ -25,4 +25,7 @@ internal object SettingsPrefs {
     const val PREF_THEME = "pref_theme"
     const val PREF_LANGUAGE = "pref_language"
     const val PREF_COLOR_VISION_MODE = "pref_color_vision_mode"
+    const val PREF_EASTER_EGG_PROTANOPIA_UNLOCKED = "pref_easter_egg_protanopia_unlocked"
+    const val PREF_RED_GREEN_ICON_VARIANT = "pref_red_green_icon_variant"
+    const val PREF_ICON_MIGRATION_DONE = "pref_icon_migration_done"
 }

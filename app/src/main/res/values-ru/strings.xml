@@ -100,6 +100,12 @@
     <string name="settings_color_vision_red_green">Красно-зелёный</string>
     <string name="settings_color_vision_blue_yellow">Сине-жёлтый</string>
     <string name="settings_color_vision_achromatopsia">Ахроматопсия</string>
+    <string name="settings_color_vision_icon_changed_warning">Иконка приложения обновлена. В некоторых лаунчерах она может ненадолго исчезнуть и появиться снова.</string>
+    <string name="settings_color_vision_icon_change_failed">Не удалось обновить иконку приложения.</string>
+    <string name="settings_easter_egg_protanopia_unlocked">Вариант иконки для протанопии разблокирован.</string>
+    <string name="settings_color_vision_red_green_icon_label">Стиль иконки для красно-зелёного режима</string>
+    <string name="settings_color_vision_icon_deuteranopia">Дейтеранопия</string>
+    <string name="settings_color_vision_icon_protanopia">Протанопия</string>
     <string name="settings_accessibility_status_preview_content">Статус: %1$s</string>
     <string name="settings_permissions">Разрешения</string>
     <string name="settings_permissions_desc">Управление разрешениями приложения</string>

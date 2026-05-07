@@ -105,6 +105,9 @@ class SettingsActivity : AppCompatActivity() {
         const val PREF_THEME = SettingsPrefs.PREF_THEME
         const val PREF_LANGUAGE = SettingsPrefs.PREF_LANGUAGE
         const val PREF_COLOR_VISION_MODE = SettingsPrefs.PREF_COLOR_VISION_MODE
+        const val PREF_EASTER_EGG_PROTANOPIA_UNLOCKED = SettingsPrefs.PREF_EASTER_EGG_PROTANOPIA_UNLOCKED
+        const val PREF_RED_GREEN_ICON_VARIANT = SettingsPrefs.PREF_RED_GREEN_ICON_VARIANT
+        const val PREF_ICON_MIGRATION_DONE = SettingsPrefs.PREF_ICON_MIGRATION_DONE
         const val EXTRA_REQUEST_PERMISSIONS = "extra_request_permissions"
 
         fun applyTheme(theme: String) {

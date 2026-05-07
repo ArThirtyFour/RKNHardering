@@ -99,6 +99,12 @@
     <string name="settings_color_vision_red_green">Red-green</string>
     <string name="settings_color_vision_blue_yellow">Blue-yellow</string>
     <string name="settings_color_vision_achromatopsia">Achromatopsia</string>
+    <string name="settings_color_vision_icon_changed_warning">App icon updated. On some launchers it may briefly disappear and re-appear.</string>
+    <string name="settings_color_vision_icon_change_failed">Failed to update app icon.</string>
+    <string name="settings_easter_egg_protanopia_unlocked">Protanopia icon variant unlocked.</string>
+    <string name="settings_color_vision_red_green_icon_label">Red-green icon style</string>
+    <string name="settings_color_vision_icon_deuteranopia">Deuteranopia</string>
+    <string name="settings_color_vision_icon_protanopia">Protanopia</string>
     <string name="settings_accessibility_status_preview_content">%1$s status</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_permissions_desc">Manage app permissions</string>

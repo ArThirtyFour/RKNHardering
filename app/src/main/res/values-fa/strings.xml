@@ -100,6 +100,12 @@
     <string name="settings_color_vision_red_green">قرمز-سبز</string>
     <string name="settings_color_vision_blue_yellow">آبی-زرد</string>
     <string name="settings_color_vision_achromatopsia">Achromatopsia</string>
+    <string name="settings_color_vision_icon_changed_warning">نماد برنامه به‌روزرسانی شد. در بعضی لانچرها ممکن است برای لحظه‌ای ناپدید و دوباره ظاهر شود.</string>
+    <string name="settings_color_vision_icon_change_failed">به‌روزرسانی نماد برنامه ناموفق بود.</string>
+    <string name="settings_easter_egg_protanopia_unlocked">گونهٔ نماد پروتانوپیا باز شد.</string>
+    <string name="settings_color_vision_red_green_icon_label">سبک نماد قرمز-سبز</string>
+    <string name="settings_color_vision_icon_deuteranopia">دوترانوپیا</string>
+    <string name="settings_color_vision_icon_protanopia">پروتانوپیا</string>
     <string name="settings_accessibility_status_preview_content">وضعیت: %1$s</string>
     <string name="settings_permissions">مجوزها</string>
     <string name="settings_permissions_desc">مدیریت مجوزهای برنامه</string>

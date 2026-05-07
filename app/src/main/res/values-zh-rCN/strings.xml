@@ -100,6 +100,12 @@
     <string name="settings_color_vision_red_green">红绿色</string>
     <string name="settings_color_vision_blue_yellow">蓝黄色</string>
     <string name="settings_color_vision_achromatopsia">Achromatopsia</string>
+    <string name="settings_color_vision_icon_changed_warning">应用图标已更新。在某些启动器上，它可能会短暂消失后重新出现。</string>
+    <string name="settings_color_vision_icon_change_failed">更新应用图标失败。</string>
+    <string name="settings_easter_egg_protanopia_unlocked">已解锁红色盲图标变体。</string>
+    <string name="settings_color_vision_red_green_icon_label">红绿色图标样式</string>
+    <string name="settings_color_vision_icon_deuteranopia">绿色盲</string>
+    <string name="settings_color_vision_icon_protanopia">红色盲</string>
     <string name="settings_accessibility_status_preview_content">状态：%1$s</string>
     <string name="settings_permissions">权限</string>
     <string name="settings_permissions_desc">管理应用权限</string>
