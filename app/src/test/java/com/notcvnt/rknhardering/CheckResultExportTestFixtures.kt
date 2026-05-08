@@ -16,6 +16,7 @@ import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.model.GeoIpFacts
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpCheckerScope
@@ -29,15 +30,30 @@ import com.notcvnt.rknhardering.model.LocalProxyOwnerStatus
 import com.notcvnt.rknhardering.model.LocalProxySummaryReason
 import com.notcvnt.rknhardering.model.MatchedVpnApp
 import com.notcvnt.rknhardering.model.ObservedIp
+import com.notcvnt.rknhardering.model.StunProbeGroupResult
+import com.notcvnt.rknhardering.model.StunProbeResult
+import com.notcvnt.rknhardering.model.StunScope
 import com.notcvnt.rknhardering.model.TargetGroup
+import com.notcvnt.rknhardering.model.UnparsedIp
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.model.VpnAppKind
 import com.notcvnt.rknhardering.model.VpnAppTechnicalMetadata
+import com.notcvnt.rknhardering.probe.PublicIpProbeMode
+import com.notcvnt.rknhardering.probe.PublicIpProbeStatus
+import com.notcvnt.rknhardering.probe.PublicIpTransportDiagnostics
 import com.notcvnt.rknhardering.probe.ProxyEndpoint
 import com.notcvnt.rknhardering.probe.ProxyType
+import com.notcvnt.rknhardering.probe.TunEndpointAttempt
+import com.notcvnt.rknhardering.probe.TunProbeAttemptDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeEngine
+import com.notcvnt.rknhardering.probe.TunProbeModeOverride
+import com.notcvnt.rknhardering.probe.TunProbePathDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeResolveStrategy
 import com.notcvnt.rknhardering.probe.XrayApiEndpoint
 import com.notcvnt.rknhardering.probe.XrayApiScanResult
 import com.notcvnt.rknhardering.probe.XrayOutboundSummary
+import com.notcvnt.rknhardering.probe.XrayStatsSummary
 
 internal fun exportEmptyCheckResult(): CheckResult {
     val emptyCategory = CategoryResult(
@@ -81,6 +97,61 @@ internal fun exportEmptyCheckResult(): CheckResult {
     )
 }
 
+private fun exportTunProbeDiagnostics(): TunProbeDiagnostics {
+    val transport = PublicIpTransportDiagnostics(
+        engine = TunProbeEngine.NATIVE_LIBCURL,
+        resolveStrategy = TunProbeResolveStrategy.NATIVE_DEFAULT,
+        curlCode = 0,
+        httpCode = 200,
+        nativeLibraryLoaded = true,
+        caBundleVersion = "test-ca",
+        resolvedAddressesUsed = listOf("203.0.113.64"),
+    )
+    return TunProbeDiagnostics(
+        enabled = true,
+        modeOverride = TunProbeModeOverride.CURL_COMPATIBLE,
+        activeNetworkIsVpn = true,
+        vpnNetworkPresent = true,
+        underlyingNetworkPresent = true,
+        vpnPath = TunProbePathDiagnostics(
+            interfaceName = "tun0",
+            selectedMode = PublicIpProbeMode.CURL_COMPATIBLE,
+            selectedIp = "203.0.113.64",
+            selectedError = null,
+            dnsPathMismatch = true,
+            strict = TunProbeAttemptDiagnostics(
+                mode = PublicIpProbeMode.STRICT_SAME_PATH,
+                status = PublicIpProbeStatus.FAILED,
+                error = "timeout from 198.51.100.7",
+                endpointAttempts = listOf(
+                    TunEndpointAttempt(
+                        endpoint = "https://198.51.100.7/ip",
+                        familyHint = "ipv4",
+                        status = PublicIpProbeStatus.FAILED,
+                        error = "timeout from 198.51.100.7",
+                    ),
+                ),
+                transportDiagnostics = transport,
+            ),
+            curlCompatible = TunProbeAttemptDiagnostics(
+                mode = PublicIpProbeMode.CURL_COMPATIBLE,
+                status = PublicIpProbeStatus.SUCCEEDED,
+                ip = "203.0.113.64",
+                endpointAttempts = listOf(
+                    TunEndpointAttempt(
+                        endpoint = "https://203.0.113.64/ip",
+                        familyHint = "ipv4",
+                        status = PublicIpProbeStatus.SUCCEEDED,
+                        ip = "203.0.113.64",
+                    ),
+                ),
+                transportDiagnostics = transport,
+            ),
+        ),
+        underlyingPath = null,
+    )
+}
+
 internal fun exportRichCheckResult(): CheckResult {
     return CheckResult(
         geoIp = CategoryResult(
@@ -100,6 +171,14 @@ internal fun exportRichCheckResult(): CheckResult {
                     confidence = EvidenceConfidence.HIGH,
                     description = "Hosting signal for 203.0.113.64",
                 ),
+            ),
+            geoFacts = GeoIpFacts(
+                ip = "203.0.113.64",
+                countryCode = "FI",
+                asn = "AS64502 Example VPN",
+                outsideRu = true,
+                hosting = true,
+                proxyDb = true,
             ),
         ),
         ipComparison = IpComparisonResult(
@@ -148,6 +227,11 @@ internal fun exportRichCheckResult(): CheckResult {
                     targetLabel = "rutracker.org",
                     url = "https://rutracker.org/cdn-cgi/trace",
                     ip = "203.0.113.64",
+                    ipv4 = "203.0.113.64",
+                    ipv6 = "2001:db8::64",
+                    ipv4Unavailable = false,
+                    ipv4Error = "IPv4 retry saw 198.51.100.7",
+                    ipv6Error = "IPv6 timeout 2001:db8::64",
                     importantFields = linkedMapOf("ip" to "203.0.113.64", "loc" to "FI"),
                     rawBody = "ip=203.0.113.64\nloc=FI",
                 ),
@@ -248,6 +332,46 @@ internal fun exportRichCheckResult(): CheckResult {
                     experimental = true,
                 ),
             ),
+            stunProbeGroups = listOf(
+                StunProbeGroupResult(
+                    scope = StunScope.GLOBAL,
+                    results = listOf(
+                        StunProbeResult(
+                            host = "stun.example.org",
+                            port = 3478,
+                            scope = StunScope.GLOBAL,
+                            mappedIpv4 = "203.0.113.64",
+                            mappedIpv6 = "2001:db8::64",
+                        ),
+                        StunProbeResult(
+                            host = "198.51.100.7",
+                            port = 3478,
+                            scope = StunScope.GLOBAL,
+                            error = "timeout from 198.51.100.7",
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        nativeSigns = CategoryResult(
+            name = "Native signs",
+            detected = true,
+            findings = listOf(
+                Finding(
+                    description = "Native getifaddrs() reports tun0",
+                    detected = true,
+                    source = EvidenceSource.NATIVE_INTERFACE,
+                    confidence = EvidenceConfidence.HIGH,
+                ),
+            ),
+            evidence = listOf(
+                EvidenceItem(
+                    source = EvidenceSource.NATIVE_INTERFACE,
+                    detected = true,
+                    confidence = EvidenceConfidence.HIGH,
+                    description = "native interface tun0 is visible",
+                ),
+            ),
         ),
         icmpSpoofing = CategoryResult(
             name = "ICMP spoofing",
@@ -273,6 +397,18 @@ internal fun exportRichCheckResult(): CheckResult {
                 ),
             ),
         ),
+        rttTriangulation = CategoryResult(
+            name = "RTT triangulation",
+            detected = false,
+            needsReview = true,
+            findings = listOf(
+                Finding(
+                    description = "RTT target mix needs review",
+                    needsReview = true,
+                    source = EvidenceSource.RTT_TRIANGULATION,
+                ),
+            ),
+        ),
         locationSignals = CategoryResult(
             name = "Location",
             detected = false,
@@ -283,6 +419,7 @@ internal fun exportRichCheckResult(): CheckResult {
                 host = "127.0.0.1",
                 port = 1080,
                 type = ProxyType.SOCKS5,
+                authRequired = true,
             ),
             proxyOwner = LocalProxyOwner(
                 uid = 10123,
@@ -309,6 +446,11 @@ internal fun exportRichCheckResult(): CheckResult {
                         proxySettingsType = "none",
                     ),
                 ),
+                stats = XrayStatsSummary(
+                    statCount = 2,
+                    sampleNames = listOf("outbound>>>proxy>>>traffic>>>uplink"),
+                ),
+                handlerAvailable = true,
             ),
             proxyChecks = listOf(
                 LocalProxyCheckResult(
@@ -316,6 +458,7 @@ internal fun exportRichCheckResult(): CheckResult {
                         host = "127.0.0.1",
                         port = 1080,
                         type = ProxyType.SOCKS5,
+                        authRequired = true,
                     ),
                     owner = LocalProxyOwner(
                         uid = 10123,
@@ -350,6 +493,7 @@ internal fun exportRichCheckResult(): CheckResult {
                 ),
             ),
         ),
+        tunProbeDiagnostics = exportTunProbeDiagnostics(),
         ipConsensus = IpConsensusResult(
             observedIps = listOf(
                 ObservedIp(
@@ -371,10 +515,24 @@ internal fun exportRichCheckResult(): CheckResult {
                     targetGroup = TargetGroup.NON_RU,
                 ),
             ),
+            unparsedIps = listOf(
+                UnparsedIp(
+                    raw = "bad field 203.0.113.64",
+                    source = "fixture.raw",
+                ),
+            ),
+            channelIps = mapOf(
+                Channel.DIRECT to setOf("198.51.100.7"),
+                Channel.VPN to setOf("203.0.113.64"),
+            ),
+            channelConflict = setOf(Channel.DIRECT, Channel.VPN),
             crossChannelMismatch = true,
+            dualStackObserved = true,
             foreignIps = setOf("203.0.113.64"),
             geoCountryMismatch = true,
+            sameAsnAcrossChannels = true,
             probeTargetDivergence = true,
+            probeTargetDirectDivergence = true,
             needsReview = true,
         ),
         verdict = Verdict.DETECTED,

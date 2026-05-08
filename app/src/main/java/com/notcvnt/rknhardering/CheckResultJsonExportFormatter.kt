@@ -9,6 +9,7 @@ import com.notcvnt.rknhardering.model.CdnPullingResponse
 import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.model.GeoIpFacts
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpComparisonResult
@@ -16,10 +17,18 @@ import com.notcvnt.rknhardering.model.IpConsensusResult
 import com.notcvnt.rknhardering.model.LocalProxyCheckResult
 import com.notcvnt.rknhardering.model.LocalProxyOwner
 import com.notcvnt.rknhardering.model.MatchedVpnApp
+import com.notcvnt.rknhardering.model.StunProbeGroupResult
+import com.notcvnt.rknhardering.model.StunProbeResult
 import com.notcvnt.rknhardering.model.VpnAppTechnicalMetadata
+import com.notcvnt.rknhardering.probe.PublicIpTransportDiagnostics
 import com.notcvnt.rknhardering.probe.ProxyEndpoint
+import com.notcvnt.rknhardering.probe.TunEndpointAttempt
+import com.notcvnt.rknhardering.probe.TunProbeAttemptDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbePathDiagnostics
 import com.notcvnt.rknhardering.probe.XrayApiScanResult
 import com.notcvnt.rknhardering.probe.XrayOutboundSummary
+import com.notcvnt.rknhardering.probe.XrayStatsSummary
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -75,12 +84,17 @@ internal object CheckResultJsonExportFormatter {
                 put("cdnPulling", cdnPullingToJson(snapshot.result.cdnPulling, snapshot.privacyMode))
                 put("directSigns", categoryToJson(snapshot.result.directSigns, snapshot.privacyMode))
                 put("indirectSigns", categoryToJson(snapshot.result.indirectSigns, snapshot.privacyMode))
+                put("nativeSigns", categoryToJson(snapshot.result.nativeSigns, snapshot.privacyMode))
                 put("icmpSpoofing", categoryToJson(snapshot.result.icmpSpoofing, snapshot.privacyMode))
+                put("rttTriangulation", categoryToJson(snapshot.result.rttTriangulation, snapshot.privacyMode))
                 put("locationSignals", categoryToJson(snapshot.result.locationSignals, snapshot.privacyMode))
                 put("bypass", bypassToJson(context, snapshot.result.bypassResult, snapshot.privacyMode))
             },
         )
         root.put("ipConsensus", buildIpConsensusJson(snapshot.result.ipConsensus, snapshot.privacyMode))
+        snapshot.result.tunProbeDiagnostics?.let {
+            root.put("tunProbeDiagnostics", tunProbeDiagnosticsToJson(it, snapshot.privacyMode))
+        }
         return root.toString(2)
     }
 
@@ -95,6 +109,42 @@ internal object CheckResultJsonExportFormatter {
             put("matchedApps", JSONArray().apply { category.matchedApps.forEach { put(matchedAppToJson(it)) } })
             put("activeApps", JSONArray().apply { category.activeApps.forEach { put(activeAppToJson(it)) } })
             put("callTransportLeaks", JSONArray().apply { category.callTransportLeaks.forEach { put(callTransportLeakToJson(it, privacyMode)) } })
+            put("stunProbeGroups", JSONArray().apply { category.stunProbeGroups.forEach { put(stunProbeGroupToJson(it, privacyMode)) } })
+            category.geoFacts?.let { put("geoFacts", geoFactsToJson(it, privacyMode)) }
+        }
+    }
+
+    private fun geoFactsToJson(facts: GeoIpFacts, privacyMode: Boolean): JSONObject {
+        return JSONObject().apply {
+            put("ip", maskExportIp(facts.ip, privacyMode))
+            put("countryCode", facts.countryCode)
+            put("asn", facts.asn?.let { maskExportValue(it, privacyMode) })
+            put("outsideRu", facts.outsideRu)
+            put("hosting", facts.hosting)
+            put("proxyDb", facts.proxyDb)
+            put("fetchError", facts.fetchError)
+        }
+    }
+
+    private fun stunProbeGroupToJson(group: StunProbeGroupResult, privacyMode: Boolean): JSONObject {
+        return JSONObject().apply {
+            put("scope", group.scope.name)
+            put("respondedCount", group.respondedCount)
+            put("totalCount", group.totalCount)
+            put("results", JSONArray().apply { group.results.forEach { put(stunProbeResultToJson(it, privacyMode)) } })
+        }
+    }
+
+    private fun stunProbeResultToJson(result: StunProbeResult, privacyMode: Boolean): JSONObject {
+        return JSONObject().apply {
+            put("host", maskExportHostOrIp(result.host, privacyMode))
+            put("port", result.port)
+            put("scope", result.scope.name)
+            put("mappedIpv4", maskExportIp(result.mappedIpv4, privacyMode))
+            put("mappedIpv6", maskExportIp(result.mappedIpv6, privacyMode))
+            put("mappedIpDisplay", result.mappedIpDisplay?.let { maskExportValue(it, privacyMode) })
+            put("error", result.error?.let { maskExportValue(it, privacyMode) })
+            put("hasResponse", result.hasResponse)
         }
     }
 
@@ -266,6 +316,11 @@ internal object CheckResultJsonExportFormatter {
             put("targetLabel", maskExportValue(response.targetLabel, privacyMode))
             put("url", maskExportValue(response.url, privacyMode))
             put("ip", maskExportIp(response.ip, privacyMode))
+            put("ipv4", maskExportIp(response.ipv4, privacyMode))
+            put("ipv6", maskExportIp(response.ipv6, privacyMode))
+            put("ipv4Unavailable", response.ipv4Unavailable)
+            put("ipv4Error", response.ipv4Error?.let { maskExportValue(it, privacyMode) })
+            put("ipv6Error", response.ipv6Error?.let { maskExportValue(it, privacyMode) })
             put(
                 "importantFields",
                 JSONObject().apply {
@@ -287,6 +342,7 @@ internal object CheckResultJsonExportFormatter {
             put("host", maskExportHostOrIp(endpoint.host, privacyMode))
             put("port", endpoint.port)
             put("type", endpoint.type.name)
+            put("authRequired", endpoint.authRequired)
         }
     }
 
@@ -335,6 +391,15 @@ internal object CheckResultJsonExportFormatter {
                     }
                 },
             )
+            put("handlerAvailable", scanResult.handlerAvailable)
+            scanResult.stats?.let { put("stats", xrayStatsToJson(it)) }
+        }
+    }
+
+    private fun xrayStatsToJson(stats: XrayStatsSummary): JSONObject {
+        return JSONObject().apply {
+            put("statCount", stats.statCount)
+            put("sampleNames", jsonArray(stats.sampleNames))
         }
     }
 
@@ -375,14 +440,111 @@ internal object CheckResultJsonExportFormatter {
                     }
                 },
             )
+            put(
+                "unparsedIps",
+                JSONArray().apply {
+                    consensus.unparsedIps.forEach { item ->
+                        put(
+                            JSONObject().apply {
+                                put("raw", maskExportValue(item.raw, privacyMode))
+                                put("source", item.source)
+                            },
+                        )
+                    }
+                },
+            )
+            put(
+                "channelIps",
+                JSONObject().apply {
+                    consensus.channelIps.toSortedMap(compareBy { it.name }).forEach { (channel, ips) ->
+                        put(channel.name, jsonArray(ips.toList().sorted().map { maskExportIp(it, privacyMode) ?: it }))
+                    }
+                },
+            )
             put("crossChannelMismatch", consensus.crossChannelMismatch)
+            put("dualStackObserved", consensus.dualStackObserved)
             put("warpLikeIndicator", consensus.warpLikeIndicator)
             put("probeTargetDivergence", consensus.probeTargetDivergence)
             put("probeTargetDirectDivergence", consensus.probeTargetDirectDivergence)
             put("geoCountryMismatch", consensus.geoCountryMismatch)
+            put("sameAsnAcrossChannels", consensus.sameAsnAcrossChannels)
             put("channelConflict", jsonArray(consensus.channelConflict.map { it.name }))
             put("foreignIps", jsonArray(consensus.foreignIps.toList().map { maskExportIp(it, privacyMode) ?: it }))
             put("needsReview", consensus.needsReview)
+        }
+    }
+
+    private fun tunProbeDiagnosticsToJson(
+        diagnostics: TunProbeDiagnostics,
+        privacyMode: Boolean,
+    ): JSONObject {
+        return JSONObject().apply {
+            put("enabled", diagnostics.enabled)
+            put("modeOverride", diagnostics.modeOverride.name)
+            put("activeNetworkIsVpn", diagnostics.activeNetworkIsVpn)
+            put("vpnNetworkPresent", diagnostics.vpnNetworkPresent)
+            put("underlyingNetworkPresent", diagnostics.underlyingNetworkPresent)
+            diagnostics.vpnPath?.let { put("vpnPath", tunProbePathToJson(it, privacyMode)) }
+            diagnostics.underlyingPath?.let { put("underlyingPath", tunProbePathToJson(it, privacyMode)) }
+        }
+    }
+
+    private fun tunProbePathToJson(
+        path: TunProbePathDiagnostics,
+        privacyMode: Boolean,
+    ): JSONObject {
+        return JSONObject().apply {
+            put("interfaceName", path.interfaceName)
+            put("selectedMode", path.selectedMode?.name)
+            put("selectedIp", maskExportIp(path.selectedIp, privacyMode))
+            put("selectedError", path.selectedError?.let { maskExportValue(it, privacyMode) })
+            put("dnsPathMismatch", path.dnsPathMismatch)
+            put("strict", tunProbeAttemptToJson(path.strict, privacyMode))
+            put("curlCompatible", tunProbeAttemptToJson(path.curlCompatible, privacyMode))
+        }
+    }
+
+    private fun tunProbeAttemptToJson(
+        attempt: TunProbeAttemptDiagnostics,
+        privacyMode: Boolean,
+    ): JSONObject {
+        return JSONObject().apply {
+            put("mode", attempt.mode.name)
+            put("status", attempt.status.name)
+            put("ip", maskExportIp(attempt.ip, privacyMode))
+            put("error", attempt.error?.let { maskExportValue(it, privacyMode) })
+            put("endpointAttempts", JSONArray().apply { attempt.endpointAttempts.forEach { put(tunEndpointAttemptToJson(it, privacyMode)) } })
+            put("transportDiagnostics", transportDiagnosticsToJson(attempt.transportDiagnostics, privacyMode))
+        }
+    }
+
+    private fun tunEndpointAttemptToJson(
+        attempt: TunEndpointAttempt,
+        privacyMode: Boolean,
+    ): JSONObject {
+        return JSONObject().apply {
+            put("endpoint", maskExportValue(attempt.endpoint, privacyMode))
+            put("familyHint", attempt.familyHint)
+            put("status", attempt.status.name)
+            put("ip", maskExportIp(attempt.ip, privacyMode))
+            put("error", attempt.error?.let { maskExportValue(it, privacyMode) })
+        }
+    }
+
+    private fun transportDiagnosticsToJson(
+        diagnostics: PublicIpTransportDiagnostics,
+        privacyMode: Boolean,
+    ): JSONObject {
+        return JSONObject().apply {
+            put("engine", diagnostics.engine?.name)
+            put("engineDebugName", diagnostics.engine?.debugName)
+            put("resolveStrategy", diagnostics.resolveStrategy?.name)
+            put("resolveStrategyDebugName", diagnostics.resolveStrategy?.debugName)
+            put("curlCode", diagnostics.curlCode)
+            put("httpCode", diagnostics.httpCode)
+            put("nativeLibraryLoaded", diagnostics.nativeLibraryLoaded)
+            put("caBundleVersion", diagnostics.caBundleVersion)
+            put("resolvedAddressesUsed", jsonArray(diagnostics.resolvedAddressesUsed.map { maskExportIp(it, privacyMode) ?: it }))
         }
     }
 

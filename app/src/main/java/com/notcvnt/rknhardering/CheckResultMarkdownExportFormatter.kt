@@ -9,15 +9,26 @@ import com.notcvnt.rknhardering.model.CdnPullingResponse
 import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.model.GeoIpFacts
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.IpConsensusResult
 import com.notcvnt.rknhardering.model.LocalProxyCheckResult
 import com.notcvnt.rknhardering.model.MatchedVpnApp
+import com.notcvnt.rknhardering.model.StunProbeGroupResult
+import com.notcvnt.rknhardering.model.StunProbeResult
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.model.VpnAppTechnicalMetadata
+import com.notcvnt.rknhardering.probe.PublicIpTransportDiagnostics
+import com.notcvnt.rknhardering.probe.ProxyEndpoint
 import com.notcvnt.rknhardering.probe.XrayOutboundSummary
+import com.notcvnt.rknhardering.probe.XrayApiScanResult
+import com.notcvnt.rknhardering.probe.XrayStatsSummary
+import com.notcvnt.rknhardering.probe.TunEndpointAttempt
+import com.notcvnt.rknhardering.probe.TunProbeAttemptDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbeDiagnostics
+import com.notcvnt.rknhardering.probe.TunProbePathDiagnostics
 
 internal object CheckResultMarkdownExportFormatter {
 
@@ -44,10 +55,12 @@ internal object CheckResultMarkdownExportFormatter {
         appendCdnPullingSection(builder, context, result.cdnPulling, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_direct_signs), result.directSigns, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_indirect_signs), result.indirectSigns, snapshot.privacyMode)
+        appendCategorySection(builder, context.getString(R.string.main_card_native_signs), result.nativeSigns, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_icmp_spoofing), result.icmpSpoofing, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_rtt_triangulation), result.rttTriangulation, snapshot.privacyMode)
         appendCategorySection(builder, context.getString(R.string.main_card_location_signals), result.locationSignals, snapshot.privacyMode)
         appendIpChannelsSection(builder, result.ipConsensus, snapshot.privacyMode)
+        appendTunProbeDiagnosticsSection(builder, result.tunProbeDiagnostics, snapshot.privacyMode)
         appendBypassSection(builder, context, result.bypassResult, snapshot.privacyMode)
         builder.appendLine("## Footer")
         builder.appendLine("- Timestamp: ${formatExportTimestamp(snapshot.finishedAtMillis)}")
@@ -139,6 +152,12 @@ internal object CheckResultMarkdownExportFormatter {
         )
         appendSectionSummaryRow(
             builder,
+            title = context.getString(R.string.main_card_native_signs),
+            status = sectionStatusTag(result.nativeSigns.detected, result.nativeSigns.needsReview, result.nativeSigns.hasError),
+            summary = buildCategorySummary(result.nativeSigns, snapshot.privacyMode),
+        )
+        appendSectionSummaryRow(
+            builder,
             title = context.getString(R.string.main_card_icmp_spoofing),
             status = sectionStatusTag(result.icmpSpoofing.detected, result.icmpSpoofing.needsReview, result.icmpSpoofing.hasError),
             summary = buildCategorySummary(result.icmpSpoofing, snapshot.privacyMode),
@@ -186,6 +205,8 @@ internal object CheckResultMarkdownExportFormatter {
         builder.appendLine("- Matched apps: ${category.matchedApps.size}")
         builder.appendLine("- Active apps: ${category.activeApps.size}")
         builder.appendLine("- Call transport signals: ${category.callTransportLeaks.size}")
+        builder.appendLine("- STUN probe groups: ${category.stunProbeGroups.size}")
+        builder.appendLine("- Geo facts: ${if (category.geoFacts != null) "present" else "<none>"}")
         builder.appendLine()
         builder.appendLine("### Findings")
         appendStringList(builder, category.findings.map { formatFinding(it, privacyMode) })
@@ -202,6 +223,18 @@ internal object CheckResultMarkdownExportFormatter {
         builder.appendLine("### Call transport")
         appendStringList(builder, category.callTransportLeaks.map { formatCallTransportLeak(it, privacyMode) })
         builder.appendLine()
+        category.geoFacts?.let { facts ->
+            builder.appendLine("### Geo facts")
+            builder.appendLine("- ${formatGeoFacts(facts, privacyMode)}")
+            builder.appendLine()
+        }
+        if (category.stunProbeGroups.isNotEmpty()) {
+            builder.appendLine("### STUN probe groups")
+            category.stunProbeGroups.forEach { group ->
+                appendStunProbeGroup(builder, group, privacyMode)
+            }
+            builder.appendLine()
+        }
     }
 
     private fun appendIpComparisonSection(
@@ -275,6 +308,11 @@ internal object CheckResultMarkdownExportFormatter {
         builder.appendLine("#### Response $index: ${maskExportValue(response.targetLabel, privacyMode)}")
         builder.appendLine("- URL: ${maskExportValue(response.url, privacyMode)}")
         builder.appendLine("- IP: ${maskExportIp(response.ip, privacyMode) ?: "<none>"}")
+        builder.appendLine("- IPv4: ${maskExportIp(response.ipv4, privacyMode) ?: "<none>"}")
+        builder.appendLine("- IPv6: ${maskExportIp(response.ipv6, privacyMode) ?: "<none>"}")
+        builder.appendLine("- IPv4 unavailable: ${response.ipv4Unavailable}")
+        builder.appendLine("- IPv4 error: ${response.ipv4Error?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
+        builder.appendLine("- IPv6 error: ${response.ipv6Error?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
         builder.appendLine("- Error: ${response.error?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
         builder.appendLine("- Important fields:")
         if (response.importantFields.isEmpty()) {
@@ -301,13 +339,13 @@ internal object CheckResultMarkdownExportFormatter {
     ) {
         builder.appendLine("## ${context.getString(R.string.settings_split_tunnel)}")
         builder.appendLine("- Status: ${sectionStatusTag(bypass.detected, bypass.needsReview)}")
-        builder.appendLine("- Local proxy: ${bypass.proxyEndpoint?.let { formatExportHostPort(it.host, it.port, privacyMode) + " (${it.type})" } ?: "<none>"}")
+        builder.appendLine("- Local proxy: ${bypass.proxyEndpoint?.let { formatProxyEndpoint(it, privacyMode) } ?: "<none>"}")
         builder.appendLine("- Owner app: ${bypass.proxyOwner?.let { LocalProxyOwnerFormatter.format(context, it) } ?: "<none>"}")
         builder.appendLine("- Direct IP: ${maskExportIp(bypass.directIp, privacyMode) ?: "<none>"}")
         builder.appendLine("- Proxy IP: ${maskExportIp(bypass.proxyIp, privacyMode) ?: "<none>"}")
         builder.appendLine("- VPN network IP: ${maskExportIp(bypass.vpnNetworkIp, privacyMode) ?: "<none>"}")
         builder.appendLine("- Underlying IP: ${maskExportIp(bypass.underlyingIp, privacyMode) ?: "<none>"}")
-        builder.appendLine("- Xray API: ${bypass.xrayApiScanResult?.let { formatExportHostPort(it.endpoint.host, it.endpoint.port, privacyMode) } ?: "<none>"}")
+        builder.appendLine("- Xray API: ${bypass.xrayApiScanResult?.let { formatXrayApiSummary(it, privacyMode) } ?: "<none>"}")
         builder.appendLine()
         builder.appendLine("### Findings")
         appendStringList(builder, bypass.findings.map { formatFinding(it, privacyMode) })
@@ -410,6 +448,47 @@ internal object CheckResultMarkdownExportFormatter {
         }.joinToString(" | ")
     }
 
+    private fun formatGeoFacts(facts: GeoIpFacts, privacyMode: Boolean): String {
+        return buildList {
+            add("ip=${maskExportIp(facts.ip, privacyMode) ?: "<none>"}")
+            add("countryCode=${facts.countryCode ?: "<none>"}")
+            add("asn=${facts.asn?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
+            add("outsideRu=${facts.outsideRu}")
+            add("hosting=${facts.hosting}")
+            add("proxyDb=${facts.proxyDb}")
+            add("fetchError=${facts.fetchError}")
+        }.joinToString(" | ")
+    }
+
+    private fun appendStunProbeGroup(
+        builder: StringBuilder,
+        group: StunProbeGroupResult,
+        privacyMode: Boolean,
+    ) {
+        builder.appendLine("- scope=${group.scope} | responded=${group.respondedCount}/${group.totalCount}")
+        if (group.results.isEmpty()) {
+            builder.appendLine("  - <none>")
+            return
+        }
+        group.results.forEach { result ->
+            builder.appendLine("  - ${formatStunProbeResult(result, privacyMode)}")
+        }
+    }
+
+    private fun formatStunProbeResult(
+        result: StunProbeResult,
+        privacyMode: Boolean,
+    ): String {
+        return buildList {
+            add("target=${formatExportHostPort(result.host, result.port, privacyMode)}")
+            add("scope=${result.scope}")
+            add("hasResponse=${result.hasResponse}")
+            result.mappedIpv4?.let { add("mappedIpv4=${maskExportIp(it, privacyMode)}") }
+            result.mappedIpv6?.let { add("mappedIpv6=${maskExportIp(it, privacyMode)}") }
+            result.error?.let { add("error=${maskExportValue(it, privacyMode)}") }
+        }.joinToString(" | ")
+    }
+
     private fun formatIpCheckerResponse(
         response: IpCheckerResponse,
         privacyMode: Boolean,
@@ -441,6 +520,7 @@ internal object CheckResultMarkdownExportFormatter {
         return buildList {
             add("endpoint=${formatExportHostPort(proxyCheck.endpoint.host, proxyCheck.endpoint.port, privacyMode)}")
             add("type=${proxyCheck.endpoint.type}")
+            add("authRequired=${proxyCheck.endpoint.authRequired}")
             add("ownerStatus=${proxyCheck.ownerStatus}")
             add("proxyIp=${maskExportIp(proxyCheck.proxyIp, privacyMode) ?: "<none>"}")
             add("status=${proxyCheck.status}")
@@ -448,6 +528,29 @@ internal object CheckResultMarkdownExportFormatter {
             add("mtProtoTarget=${proxyCheck.mtProtoTarget?.let { maskExportHostPort(it, privacyMode) } ?: "<none>"}")
             add("summaryReason=${proxyCheck.summaryReason ?: "<none>"}")
         }.joinToString(" | ")
+    }
+
+    private fun formatProxyEndpoint(endpoint: ProxyEndpoint, privacyMode: Boolean): String {
+        return buildList {
+            add(formatExportHostPort(endpoint.host, endpoint.port, privacyMode))
+            add("type=${endpoint.type}")
+            add("authRequired=${endpoint.authRequired}")
+        }.joinToString(" | ")
+    }
+
+    private fun formatXrayApiSummary(scanResult: XrayApiScanResult, privacyMode: Boolean): String {
+        return buildList {
+            add(formatExportHostPort(scanResult.endpoint.host, scanResult.endpoint.port, privacyMode))
+            add("handlerAvailable=${scanResult.handlerAvailable}")
+            scanResult.stats?.let { add("stats=${formatXrayStats(it)}") }
+        }.joinToString(" | ")
+    }
+
+    private fun formatXrayStats(stats: XrayStatsSummary): String {
+        return buildList {
+            add("statCount=${stats.statCount}")
+            add("sampleNames=${stats.sampleNames.joinToString(", ").ifBlank { "<none>" }}")
+        }.joinToString(" ")
     }
 
     private fun formatXrayOutbound(
@@ -502,7 +605,7 @@ internal object CheckResultMarkdownExportFormatter {
         consensus: IpConsensusResult,
         privacyMode: Boolean,
     ) {
-        if (consensus.observedIps.isEmpty()) {
+        if (!consensus.hasReportableContent()) {
             return
         }
         builder.appendLine("## IP каналы")
@@ -521,17 +624,141 @@ internal object CheckResultMarkdownExportFormatter {
         builder.appendLine()
         val flags = buildList {
             if (consensus.crossChannelMismatch) add("crossChannelMismatch=true")
+            if (consensus.dualStackObserved) add("dualStackObserved=true")
             if (consensus.warpLikeIndicator) add("warpLikeIndicator=true")
             if (consensus.probeTargetDivergence) add("probeTargetDivergence=true")
             if (consensus.probeTargetDirectDivergence) add("probeTargetDirectDivergence=true")
             if (consensus.geoCountryMismatch) add("geoCountryMismatch=true")
+            if (consensus.sameAsnAcrossChannels) add("sameAsnAcrossChannels=true")
             if (consensus.channelConflict.isNotEmpty()) add("channelConflict=${consensus.channelConflict.joinToString(", ")}")
+            if (consensus.foreignIps.isNotEmpty()) {
+                add("foreignIps=${consensus.foreignIps.joinToString(", ") { maskExportIp(it, privacyMode) ?: it }}")
+            }
             if (consensus.needsReview) add("needsReview=true")
         }
         if (flags.isNotEmpty()) {
             builder.appendLine("Флаги: ${flags.joinToString(", ")}")
         }
         builder.appendLine()
+        if (consensus.channelIps.isNotEmpty()) {
+            builder.appendLine("Channel IPs:")
+            consensus.channelIps.toSortedMap(compareBy { it.name }).forEach { (channel, ips) ->
+                val rendered = ips.toList()
+                    .sorted()
+                    .joinToString(", ") { ip -> maskExportIp(ip, privacyMode) ?: ip }
+                    .ifBlank { "<none>" }
+                builder.appendLine("- $channel: $rendered")
+            }
+            builder.appendLine()
+        }
+        if (consensus.unparsedIps.isNotEmpty()) {
+            builder.appendLine("Unparsed IP inputs:")
+            consensus.unparsedIps.forEach { item ->
+                builder.appendLine("- source=${item.source} | raw=${maskExportValue(item.raw, privacyMode)}")
+            }
+            builder.appendLine()
+        }
+    }
+
+    private fun IpConsensusResult.hasReportableContent(): Boolean {
+        return observedIps.isNotEmpty() ||
+            unparsedIps.isNotEmpty() ||
+            channelIps.isNotEmpty() ||
+            channelConflict.isNotEmpty() ||
+            crossChannelMismatch ||
+            dualStackObserved ||
+            foreignIps.isNotEmpty() ||
+            geoCountryMismatch ||
+            sameAsnAcrossChannels ||
+            warpLikeIndicator ||
+            probeTargetDivergence ||
+            probeTargetDirectDivergence ||
+            needsReview
+    }
+
+    private fun appendTunProbeDiagnosticsSection(
+        builder: StringBuilder,
+        diagnostics: TunProbeDiagnostics?,
+        privacyMode: Boolean,
+    ) {
+        diagnostics ?: return
+        builder.appendLine("## TUN probe diagnostics")
+        builder.appendLine("- Enabled: ${diagnostics.enabled}")
+        builder.appendLine("- Mode override: ${diagnostics.modeOverride}")
+        builder.appendLine("- Active network is VPN: ${diagnostics.activeNetworkIsVpn ?: "<unknown>"}")
+        builder.appendLine("- VPN network present: ${diagnostics.vpnNetworkPresent}")
+        builder.appendLine("- Underlying network present: ${diagnostics.underlyingNetworkPresent}")
+        appendTunProbePath(builder, "VPN path", diagnostics.vpnPath, privacyMode)
+        appendTunProbePath(builder, "Underlying path", diagnostics.underlyingPath, privacyMode)
+        builder.appendLine()
+    }
+
+    private fun appendTunProbePath(
+        builder: StringBuilder,
+        title: String,
+        path: TunProbePathDiagnostics?,
+        privacyMode: Boolean,
+    ) {
+        builder.appendLine("### $title")
+        if (path == null) {
+            builder.appendLine("- <none>")
+            return
+        }
+        builder.appendLine("- Interface: ${path.interfaceName ?: "<none>"}")
+        builder.appendLine("- Selected mode: ${path.selectedMode ?: "<none>"}")
+        builder.appendLine("- Selected IP: ${maskExportIp(path.selectedIp, privacyMode) ?: "<none>"}")
+        builder.appendLine("- Selected error: ${path.selectedError?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
+        builder.appendLine("- DNS path mismatch: ${path.dnsPathMismatch}")
+        builder.appendLine("- Strict: ${formatTunProbeAttempt(path.strict, privacyMode)}")
+        builder.appendLine("- Curl compatible: ${formatTunProbeAttempt(path.curlCompatible, privacyMode)}")
+    }
+
+    private fun formatTunProbeAttempt(
+        attempt: TunProbeAttemptDiagnostics,
+        privacyMode: Boolean,
+    ): String {
+        return buildList {
+            add("mode=${attempt.mode}")
+            add("status=${attempt.status}")
+            add("ip=${maskExportIp(attempt.ip, privacyMode) ?: "<none>"}")
+            add("error=${attempt.error?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
+            add("endpointAttempts=${formatTunEndpointAttempts(attempt.endpointAttempts, privacyMode)}")
+            add("transport=${formatTransportDiagnostics(attempt.transportDiagnostics, privacyMode)}")
+        }.joinToString(" | ")
+    }
+
+    private fun formatTunEndpointAttempts(
+        attempts: List<TunEndpointAttempt>,
+        privacyMode: Boolean,
+    ): String {
+        return attempts.joinToString("; ") { attempt ->
+            buildList {
+                add("endpoint=${maskExportValue(attempt.endpoint, privacyMode)}")
+                add("family=${attempt.familyHint}")
+                add("status=${attempt.status}")
+                add("ip=${maskExportIp(attempt.ip, privacyMode) ?: "<none>"}")
+                add("error=${attempt.error?.let { maskExportValue(it, privacyMode) } ?: "<none>"}")
+            }.joinToString(" ")
+        }.ifBlank { "<none>" }
+    }
+
+    private fun formatTransportDiagnostics(
+        diagnostics: PublicIpTransportDiagnostics,
+        privacyMode: Boolean,
+    ): String {
+        return buildList {
+            add("engine=${diagnostics.engine?.debugName ?: "<none>"}")
+            add("resolveStrategy=${diagnostics.resolveStrategy?.debugName ?: "<none>"}")
+            add("curlCode=${diagnostics.curlCode ?: "<none>"}")
+            add("httpCode=${diagnostics.httpCode ?: "<none>"}")
+            add("nativeLibraryLoaded=${diagnostics.nativeLibraryLoaded ?: "<unknown>"}")
+            add("caBundleVersion=${diagnostics.caBundleVersion ?: "<none>"}")
+            add(
+                "resolvedAddressesUsed=${
+                    diagnostics.resolvedAddressesUsed.joinToString(", ") { maskExportIp(it, privacyMode) ?: it }.ifBlank { "<none>" }
+                }",
+            )
+        }.joinToString(" ")
     }
 
     private fun escapeTableCell(value: String): String {

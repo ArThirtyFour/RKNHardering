@@ -36,12 +36,18 @@ class CheckResultJsonExportFormatterTest {
         assertTrue(results.has("geoIp"))
         assertTrue(results.has("ipComparison"))
         assertTrue(results.has("cdnPulling"))
+        assertTrue(results.has("nativeSigns"))
         assertTrue(results.has("icmpSpoofing"))
+        assertTrue(results.has("rttTriangulation"))
         assertTrue(results.has("bypass"))
         assertTrue(results.getJSONObject("ipComparison").getJSONObject("ruGroup").has("responses"))
-        val outbound = results
-            .getJSONObject("bypass")
+        val bypass = results.getJSONObject("bypass")
+        assertTrue(bypass.getJSONObject("proxyEndpoint").getBoolean("authRequired"))
+        val xray = bypass
             .getJSONObject("xrayApiScanResult")
+        assertTrue(xray.getBoolean("handlerAvailable"))
+        assertEquals(2, xray.getJSONObject("stats").getInt("statCount"))
+        val outbound = xray
             .getJSONArray("outbounds")
             .getJSONObject(0)
         assertTrue(outbound.getBoolean("uuidPresent"))
@@ -77,6 +83,9 @@ class CheckResultJsonExportFormatterTest {
         assertTrue(rawBody.contains("203.0.*.*"))
         assertFalse(rawBody.contains("203.0.113.64"))
         assertFalse(results.toString().contains("198.51.100.7"))
+        assertFalse(json.toString().contains("203.0.113.64"))
+        assertFalse(json.toString().contains("198.51.100.7"))
+        assertFalse(json.toString().contains("2001:db8::64"))
     }
 
     @Test
@@ -98,14 +107,22 @@ class CheckResultJsonExportFormatterTest {
         val observedIps = ipConsensus.getJSONArray("observedIps")
         assertEquals(2, observedIps.length())
         assertTrue(ipConsensus.has("observedIps"))
+        assertTrue(ipConsensus.has("unparsedIps"))
+        assertTrue(ipConsensus.has("channelIps"))
         assertTrue(ipConsensus.has("crossChannelMismatch"))
+        assertTrue(ipConsensus.has("dualStackObserved"))
         assertTrue(ipConsensus.has("warpLikeIndicator"))
         assertTrue(ipConsensus.has("probeTargetDivergence"))
         assertTrue(ipConsensus.has("probeTargetDirectDivergence"))
         assertTrue(ipConsensus.has("geoCountryMismatch"))
+        assertTrue(ipConsensus.has("sameAsnAcrossChannels"))
         assertTrue(ipConsensus.has("channelConflict"))
         assertTrue(ipConsensus.has("foreignIps"))
         assertTrue(ipConsensus.has("needsReview"))
+        assertEquals(1, ipConsensus.getJSONArray("unparsedIps").length())
+        assertEquals("198.51.100.7", ipConsensus.getJSONObject("channelIps").getJSONArray("DIRECT").getString(0))
+        assertTrue(ipConsensus.getBoolean("dualStackObserved"))
+        assertTrue(ipConsensus.getBoolean("sameAsnAcrossChannels"))
         assertEquals("DIRECT", observedIps.getJSONObject(0).getString("channel"))
         assertEquals("V4", observedIps.getJSONObject(0).getString("family"))
         assertEquals("VPN", observedIps.getJSONObject(1).getString("channel"))
@@ -150,6 +167,52 @@ class CheckResultJsonExportFormatterTest {
         val icmp = json.getJSONObject("results").getJSONObject("icmpSpoofing")
         assertTrue(icmp.getBoolean("needsReview"))
         assertEquals("ICMP spoofing", icmp.getString("name"))
+    }
+
+    @Test
+    fun `json export includes added report parameters`() {
+        val json = JSONObject(
+            CheckResultJsonExportFormatter.format(
+                context = context,
+                snapshot = createCompletedExportSnapshot(
+                    result = exportRichCheckResult(),
+                    privacyMode = false,
+                    finishedAtMillis = 0L,
+                ),
+                appVersionName = "1.0",
+                buildType = "debug",
+            ),
+        )
+
+        val results = json.getJSONObject("results")
+        val geoFacts = results.getJSONObject("geoIp").getJSONObject("geoFacts")
+        assertEquals("203.0.113.64", geoFacts.getString("ip"))
+        assertTrue(geoFacts.getBoolean("outsideRu"))
+        assertTrue(geoFacts.getBoolean("proxyDb"))
+
+        val cdnResponse = results.getJSONObject("cdnPulling").getJSONArray("responses").getJSONObject(0)
+        assertEquals("203.0.113.64", cdnResponse.getString("ipv4"))
+        assertEquals("2001:db8::64", cdnResponse.getString("ipv6"))
+        assertFalse(cdnResponse.getBoolean("ipv4Unavailable"))
+        assertTrue(cdnResponse.getString("ipv4Error").contains("198.51.100.7"))
+
+        val stunGroup = results
+            .getJSONObject("indirectSigns")
+            .getJSONArray("stunProbeGroups")
+            .getJSONObject(0)
+        assertEquals("GLOBAL", stunGroup.getString("scope"))
+        assertEquals(1, stunGroup.getInt("respondedCount"))
+        assertEquals("203.0.113.64", stunGroup.getJSONArray("results").getJSONObject(0).getString("mappedIpv4"))
+
+        val nativeSigns = results.getJSONObject("nativeSigns")
+        assertEquals("Native signs", nativeSigns.getString("name"))
+        assertTrue(nativeSigns.getBoolean("detected"))
+        assertTrue(results.getJSONObject("rttTriangulation").getBoolean("needsReview"))
+
+        val tun = json.getJSONObject("tunProbeDiagnostics")
+        assertTrue(tun.getBoolean("enabled"))
+        assertEquals("CURL_COMPATIBLE", tun.getString("modeOverride"))
+        assertEquals("203.0.113.64", tun.getJSONObject("vpnPath").getString("selectedIp"))
     }
 
     @Test
