@@ -594,7 +594,7 @@ class BypassCheckerTest {
 
         assertFalse(evaluation.confirmedBypass)
         assertEquals(LocalProxyCheckStatus.AUTH_REQUIRED, evaluation.proxyChecks.single().status)
-        assertTrue(BypassChecker.proxyChecksNeedReview(evaluation.proxyChecks))
+        assertFalse(BypassChecker.proxyChecksNeedReview(evaluation.proxyChecks))
         assertFalse(evidence.any { it.source == EvidenceSource.SPLIT_TUNNEL_BYPASS && it.detected })
         // AUTH_REQUIRED + UNRESOLVED owner is downgraded to informational so
         // the verdict isn't inflated by an unattributable listener that we
@@ -608,6 +608,17 @@ class BypassCheckerTest {
             },
         )
         assertFalse(evidence.any { it.source == EvidenceSource.LOCAL_PROXY })
+    }
+
+    @Test
+    fun `auth required proxy with known owner still needs review`() {
+        val proxyCheck = com.notcvnt.rknhardering.model.LocalProxyCheckResult(
+            endpoint = ProxyEndpoint(host = "127.0.0.1", port = 10808, type = ProxyType.SOCKS5, authRequired = true),
+            ownerStatus = LocalProxyOwnerStatus.AMBIGUOUS,
+            status = LocalProxyCheckStatus.AUTH_REQUIRED,
+        )
+
+        assertTrue(BypassChecker.proxyChecksNeedReview(listOf(proxyCheck)))
     }
 
     @Test

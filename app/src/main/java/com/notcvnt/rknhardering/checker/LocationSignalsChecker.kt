@@ -18,6 +18,7 @@ import android.telephony.CellInfo
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
 import android.telephony.CellInfoWcdma
+import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.telephony.gsm.GsmCellLocation
 import androidx.annotation.DoNotInline
@@ -49,6 +50,13 @@ object LocationSignalsChecker {
         val operatorName: String?,
         val isRoaming: Boolean?,
         val simMnc: String? = null,
+        val isActiveDataSubscription: Boolean = false,
+        val isDefaultDataSubscription: Boolean = false,
+    )
+
+    private data class DataSubscriptionIds(
+        val active: Int?,
+        val default: Int?,
     )
 
     private data class CellCollectionResult(
@@ -258,6 +266,7 @@ object LocationSignalsChecker {
         } else {
             null
         }
+        val dataSubscriptionIds = getDataSubscriptionIds()
 
         if (!subscriptions.isNullOrEmpty()) {
             return subscriptions.mapNotNull { info ->
@@ -282,6 +291,8 @@ object LocationSignalsChecker {
                             ?: subTm.simOperatorName?.takeIf { it.isNotEmpty() }
                             ?: subTm.networkOperatorName?.takeIf { it.isNotEmpty() },
                         isRoaming = subTm.isNetworkRoaming,
+                        isActiveDataSubscription = info.subscriptionId == dataSubscriptionIds.active,
+                        isDefaultDataSubscription = info.subscriptionId == dataSubscriptionIds.default,
                     )
                 }.getOrNull()
             }
@@ -306,6 +317,8 @@ object LocationSignalsChecker {
                     operatorName = tm.simOperatorName?.takeIf { it.isNotEmpty() }
                         ?: tm.networkOperatorName?.takeIf { it.isNotEmpty() },
                     isRoaming = tm.isNetworkRoaming,
+                    isActiveDataSubscription = dataSubscriptionIds.active != null,
+                    isDefaultDataSubscription = dataSubscriptionIds.default != null,
                 )
             )
         }.getOrElse { emptyList() }
@@ -314,8 +327,32 @@ object LocationSignalsChecker {
     @Suppress("MissingPermission")
     private fun getActiveSubscriptions(context: Context): List<android.telephony.SubscriptionInfo>? {
         val subscriptionManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-                as? android.telephony.SubscriptionManager
+                as? SubscriptionManager
         return runCatching { subscriptionManager?.activeSubscriptionInfoList }.getOrNull()
+    }
+
+    private fun getDataSubscriptionIds(): DataSubscriptionIds {
+        val defaultDataSubscriptionId = runCatching {
+            normalizeSubscriptionId(SubscriptionManager.getDefaultDataSubscriptionId())
+        }.getOrNull()
+        val activeDataSubscriptionId = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                normalizeSubscriptionId(SubscriptionManager.getActiveDataSubscriptionId())
+            } else {
+                defaultDataSubscriptionId
+            }
+        }.getOrNull()
+        return DataSubscriptionIds(
+            active = activeDataSubscriptionId,
+            default = defaultDataSubscriptionId,
+        )
+    }
+
+    private fun normalizeSubscriptionId(subscriptionId: Int): Int? {
+        return subscriptionId.takeIf {
+            it != SubscriptionManager.INVALID_SUBSCRIPTION_ID &&
+                it != SubscriptionManager.DEFAULT_SUBSCRIPTION_ID
+        }
     }
 
     private suspend fun collectCellCandidates(
@@ -892,10 +929,7 @@ object LocationSignalsChecker {
         val evidence = mutableListOf<EvidenceItem>()
         var needsReview = false
 
-        // Pick "home" SIM for the home-routed-roaming heuristic. Prefer the
-        // first SIM with a known MCC; fall back to the first card we have.
-        val homeSim = snapshot.simCards.firstOrNull { !it.simMcc.isNullOrBlank() }
-            ?: snapshot.simCards.firstOrNull()
+        val homeSim = selectHomeSim(snapshot)
         val homeSimCountryIsRussia = homeSim?.simMcc == RUSSIA_MCC
         val networkIsRussia = snapshot.networkMcc == RUSSIA_MCC
         val homeRoutedRoaming = networkIsRussia &&
@@ -1121,6 +1155,23 @@ object LocationSignalsChecker {
                 bssidUnavailableReason = snapshot.bssidUnavailableReason,
             ),
         )
+    }
+
+    private fun selectHomeSim(snapshot: LocationSnapshot): SimCardInfo? {
+        val simsWithMcc = snapshot.simCards.filter { !it.simMcc.isNullOrBlank() }
+        return snapshot.simCards.firstOrNull { it.isActiveDataSubscription }
+            ?: snapshot.simCards.firstOrNull { it.isDefaultDataSubscription }
+            ?: simsWithMcc.firstOrNull { it.matchesRegisteredNetwork(snapshot) }
+            ?: simsWithMcc.firstOrNull()
+            ?: snapshot.simCards.firstOrNull()
+    }
+
+    private fun SimCardInfo.matchesRegisteredNetwork(snapshot: LocationSnapshot): Boolean {
+        if (simMcc.isNullOrBlank() || snapshot.networkMcc.isNullOrBlank()) return false
+        if (simMcc != snapshot.networkMcc) return false
+        return snapshot.networkMnc.isNullOrBlank() ||
+            simMnc.isNullOrBlank() ||
+            simMnc == snapshot.networkMnc
     }
 
     private val MAC_ADDRESS_REGEX = Regex("^[0-9a-f]{2}(?::[0-9a-f]{2}){5}$")

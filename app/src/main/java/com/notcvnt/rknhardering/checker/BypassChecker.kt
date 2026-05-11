@@ -283,9 +283,17 @@ object BypassChecker {
     }
 
     internal fun proxyChecksNeedReview(proxyChecks: List<LocalProxyCheckResult>): Boolean {
-        return proxyChecks.any {
-            it.status != LocalProxyCheckStatus.SAME_IP &&
-                it.status != LocalProxyCheckStatus.CONFIRMED_BYPASS
+        return proxyChecks.any(::proxyCheckNeedsReview)
+    }
+
+    private fun proxyCheckNeedsReview(proxyCheck: LocalProxyCheckResult): Boolean {
+        return when (proxyCheck.status) {
+            LocalProxyCheckStatus.SAME_IP,
+            LocalProxyCheckStatus.CONFIRMED_BYPASS -> false
+            LocalProxyCheckStatus.AUTH_REQUIRED ->
+                proxyCheck.ownerStatus != LocalProxyOwnerStatus.UNRESOLVED
+            LocalProxyCheckStatus.PROXY_IP_UNAVAILABLE,
+            LocalProxyCheckStatus.DIRECT_IP_UNAVAILABLE -> true
         }
     }
 

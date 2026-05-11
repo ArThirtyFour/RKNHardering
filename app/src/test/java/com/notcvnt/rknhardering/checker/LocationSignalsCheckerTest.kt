@@ -451,6 +451,73 @@ class LocationSignalsCheckerTest {
     }
 
     @Test
+    fun `active russian data sim prevents home routed roaming from inactive foreign sim`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "250",
+                networkCountryIso = "ru",
+                networkOperatorName = "MegaFon",
+                simCards = listOf(
+                    sim(
+                        slotIndex = 0,
+                        subscriptionId = 1,
+                        simMcc = "208",
+                        simCountryIso = "fr",
+                        operatorName = "Free Mobile",
+                        isRoaming = true,
+                    ),
+                    sim(
+                        slotIndex = 1,
+                        subscriptionId = 2,
+                        simMcc = "250",
+                        simMnc = "02",
+                        simCountryIso = "ru",
+                        operatorName = "MegaFon",
+                        isRoaming = false,
+                        isActiveDataSubscription = true,
+                        isDefaultDataSubscription = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(result.locationFacts!!.homeRoutedRoaming)
+        assertEquals("250", result.locationFacts!!.homeSimMcc)
+        assertFalse(result.evidence.any { it.source == EvidenceSource.HOME_ROUTED_ROAMING })
+    }
+
+    @Test
+    fun `registered network sim is preferred over first foreign sim when data id is unavailable`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "250",
+                networkOperatorName = "MegaFon",
+                simCards = listOf(
+                    sim(
+                        slotIndex = 0,
+                        subscriptionId = 1,
+                        simMcc = "208",
+                        simCountryIso = "fr",
+                        operatorName = "Free Mobile",
+                        isRoaming = true,
+                    ),
+                    sim(
+                        slotIndex = 1,
+                        subscriptionId = 2,
+                        simMcc = "250",
+                        simCountryIso = "ru",
+                        operatorName = "MegaFon",
+                        isRoaming = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(result.locationFacts!!.homeRoutedRoaming)
+        assertEquals("250", result.locationFacts!!.homeSimMcc)
+    }
+
+    @Test
     fun `empty sim cards list produces no sim findings and medium confidence for non-ru network`() {
         val result = LocationSignalsChecker.evaluate(
             snapshot(
@@ -475,16 +542,22 @@ class LocationSignalsCheckerTest {
         slotIndex: Int = 0,
         subscriptionId: Int = 1,
         simMcc: String? = "250",
+        simMnc: String? = null,
         simCountryIso: String? = "ru",
         operatorName: String? = "MegaFon",
         isRoaming: Boolean? = false,
+        isActiveDataSubscription: Boolean = false,
+        isDefaultDataSubscription: Boolean = false,
     ) = LocationSignalsChecker.SimCardInfo(
         slotIndex = slotIndex,
         subscriptionId = subscriptionId,
         simMcc = simMcc,
+        simMnc = simMnc,
         simCountryIso = simCountryIso,
         operatorName = operatorName,
         isRoaming = isRoaming,
+        isActiveDataSubscription = isActiveDataSubscription,
+        isDefaultDataSubscription = isDefaultDataSubscription,
     )
 
     private fun snapshot(

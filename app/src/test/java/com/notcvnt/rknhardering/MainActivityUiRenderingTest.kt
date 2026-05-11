@@ -19,6 +19,10 @@ import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.Channel
 import com.notcvnt.rknhardering.model.CdnPullingResponse
 import com.notcvnt.rknhardering.model.CdnPullingResult
+import com.notcvnt.rknhardering.model.CheckResult
+import com.notcvnt.rknhardering.model.EvidenceConfidence
+import com.notcvnt.rknhardering.model.EvidenceItem
+import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
@@ -26,8 +30,10 @@ import com.notcvnt.rknhardering.model.IpCheckerScope
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.IpFamily
 import com.notcvnt.rknhardering.model.IpConsensusResult
+import com.notcvnt.rknhardering.model.LocationSignalsFacts
 import com.notcvnt.rknhardering.model.ObservedIp
 import com.notcvnt.rknhardering.model.TargetGroup
+import com.notcvnt.rknhardering.model.Verdict
 import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -478,6 +484,102 @@ class MainActivityUiRenderingTest {
         )
     }
 
+    @Test
+    fun `completed event refreshes reconciled cdn and icmp cards`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val rawCdn = CdnPullingResult(
+            detected = true,
+            needsReview = true,
+            summary = "Raw CDN signal",
+            responses = listOf(
+                CdnPullingResponse(
+                    targetLabel = "meduza.io",
+                    url = "https://meduza.io/cdn-cgi/trace",
+                    ip = "203.0.113.64",
+                ),
+            ),
+        )
+        val rawIcmp = CategoryResult(
+            name = "icmp",
+            detected = false,
+            findings = listOf(Finding("Raw ICMP signal", needsReview = true)),
+            needsReview = true,
+            evidence = listOf(
+                EvidenceItem(
+                    source = EvidenceSource.ICMP_SPOOFING,
+                    detected = true,
+                    confidence = EvidenceConfidence.MEDIUM,
+                    description = "Blocked target replied",
+                ),
+            ),
+        )
+
+        invokePrivate<Unit>(activity, "displayCdnPulling", rawCdn, false)
+        invokePrivate<Unit>(activity, "updateTileFromCdn", rawCdn)
+        invokePrivate<Unit>(
+            activity,
+            "displayCategory",
+            rawIcmp,
+            activity.findViewById<MaterialCardView>(R.id.cardIcmpSpoofing),
+            activity.findViewById<ImageView>(R.id.iconIcmpSpoofing),
+            activity.findViewById<TextView>(R.id.statusIcmpSpoofing),
+            activity.findViewById<LinearLayout>(R.id.findingsIcmpSpoofing),
+            false,
+        )
+        invokePrivate<Unit>(activity, "updateTileFromCategory", "icmp", rawIcmp)
+
+        val finalCdn = rawCdn.copy(detected = false, needsReview = false, summary = "Reconciled CDN signal")
+        val finalIcmp = rawIcmp.copy(
+            findings = listOf(Finding("Reconciled ICMP signal", isInformational = true)),
+            needsReview = false,
+            evidence = emptyList(),
+        )
+        invokePrivate<Unit>(
+            activity,
+            "applyScanEvent",
+            ScanEvent.Completed(
+                checkResult(cdnPulling = finalCdn, icmpSpoofing = finalIcmp),
+                privacyMode = false,
+            ),
+            false,
+        )
+
+        assertEquals(activity.getString(R.string.main_card_status_clean), activity.findViewById<TextView>(R.id.statusCdnPulling).text.toString())
+        assertEquals(activity.getString(R.string.tile_hint_clean_count, 1), tileHint(activity, "cdn"))
+        assertEquals(activity.getString(R.string.main_card_status_clean), activity.findViewById<TextView>(R.id.statusIcmpSpoofing).text.toString())
+        assertEquals(activity.getString(R.string.tile_hint_clean), tileHint(activity, "icmp"))
+    }
+
+    @Test
+    fun `completed event shows home routed roaming note in verdict hero`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val location = category("location").copy(
+            locationFacts = LocationSignalsFacts(
+                networkMcc = "250",
+                networkIsRussia = true,
+                homeSimMcc = "208",
+                homeSimCountryIso = "FR",
+                homeSimOperatorName = "Free Mobile",
+                homeRoutedRoaming = true,
+            ),
+        )
+
+        invokePrivate<Unit>(
+            activity,
+            "applyScanEvent",
+            ScanEvent.Completed(
+                checkResult(locationSignals = location),
+                privacyMode = false,
+            ),
+            false,
+        )
+
+        val note = activity.findViewById<TextView>(R.id.verdictHomeRoutedRoamingNote)
+        assertEquals(View.VISIBLE, note.visibility)
+        assertTrueContains(note.text.toString(), "Free Mobile")
+        assertTrueContains(note.text.toString(), "FR")
+    }
+
     private fun collectText(view: View): String {
         if (view is TextView) return view.text.toString()
         if (view !is ViewGroup) return ""
@@ -508,6 +610,46 @@ class MainActivityUiRenderingTest {
             statusLabel = "",
             summary = "",
             responses = emptyList(),
+        )
+    }
+
+    private fun checkResult(
+        cdnPulling: CdnPullingResult = CdnPullingResult.empty(),
+        icmpSpoofing: CategoryResult = category("icmp"),
+        locationSignals: CategoryResult = category("location"),
+        verdict: Verdict = Verdict.NOT_DETECTED,
+    ): CheckResult {
+        return CheckResult(
+            geoIp = category("geo"),
+            ipComparison = IpComparisonResult(
+                detected = false,
+                summary = "",
+                ruGroup = emptyIpCheckerGroup("RU"),
+                nonRuGroup = emptyIpCheckerGroup("NON_RU"),
+            ),
+            cdnPulling = cdnPulling,
+            directSigns = category("direct"),
+            indirectSigns = category("indirect"),
+            locationSignals = locationSignals,
+            bypassResult = BypassResult(
+                proxyEndpoint = null,
+                directIp = null,
+                proxyIp = null,
+                xrayApiScanResult = null,
+                findings = emptyList(),
+                detected = false,
+            ),
+            verdict = verdict,
+            icmpSpoofing = icmpSpoofing,
+            ipConsensus = IpConsensusResult.empty(),
+        )
+    }
+
+    private fun category(name: String): CategoryResult {
+        return CategoryResult(
+            name = name,
+            detected = false,
+            findings = emptyList(),
         )
     }
 

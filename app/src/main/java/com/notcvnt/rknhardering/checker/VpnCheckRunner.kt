@@ -280,9 +280,15 @@ object VpnCheckRunner {
         // by the SIM home network.
         if (!result.detected && !result.needsReview) return result
         return result.copy(
+            detected = false,
             needsReview = false,
             findings = result.findings.map { finding ->
-                if (finding.needsReview) finding.copy(needsReview = false) else finding
+                when {
+                    finding.isError -> finding.copy(needsReview = false)
+                    finding.detected || finding.needsReview ->
+                        finding.copy(detected = false, needsReview = false, isInformational = true)
+                    else -> finding
+                }
             },
         )
     }
@@ -293,6 +299,7 @@ object VpnCheckRunner {
         // reply via ICMP cannot be treated as suspicious.
         if (!result.needsReview && result.evidence.none { it.detected }) return result
         return result.copy(
+            detected = false,
             needsReview = false,
             evidence = result.evidence.map { item ->
                 if (item.source == EvidenceSource.ICMP_SPOOFING && item.detected) {
@@ -300,7 +307,7 @@ object VpnCheckRunner {
                 } else item
             },
             findings = result.findings.map { finding ->
-                if (finding.needsReview) finding.copy(needsReview = false) else finding
+                if (finding.needsReview) finding.copy(detected = false, needsReview = false, isInformational = true) else finding
             },
         )
     }

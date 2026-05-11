@@ -311,6 +311,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var verdictLabel: TextView
     private lateinit var verdictTitle: TextView
     private lateinit var verdictSubtitle: TextView
+    private lateinit var verdictHomeRoutedRoamingNote: TextView
     private lateinit var hiddenLegacyCardsHost: LinearLayout
     private lateinit var btnPrivacyInfo: MaterialButton
     private val tiles = mutableMapOf<String, TileHolder>()
@@ -544,6 +545,7 @@ class MainActivity : AppCompatActivity() {
         verdictLabel = findViewById(R.id.verdictLabel)
         verdictTitle = findViewById(R.id.verdictTitle)
         verdictSubtitle = findViewById(R.id.verdictSubtitle)
+        verdictHomeRoutedRoamingNote = findViewById(R.id.verdictHomeRoutedRoamingNote)
         hiddenLegacyCardsHost = findViewById(R.id.hiddenLegacyCardsHost)
         btnPrivacyInfo = findViewById(R.id.btnPrivacyInfo)
         btnPrivacyInfo.setOnClickListener { showPrivacyFooterDialog() }
@@ -1202,6 +1204,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 activeCheckSettings = null
                 lastCompletedResult = event.result
+                refreshCompletedCategoryViews(event.result, event.privacyMode)
                 displayVerdict(event.result, event.privacyMode)
                 bindVerdictHero(event.result)
                 if (animate) animateContentReveal(verdictHero)
@@ -1230,6 +1233,30 @@ class MainActivity : AppCompatActivity() {
                 verdictSubtitle.text = getString(R.string.main_check_stopped)
                 updateResultActionButtonsVisibility()
             }
+        }
+    }
+
+    private fun refreshCompletedCategoryViews(result: CheckResult, privacyMode: Boolean) {
+        if (cardCdnPulling.isVisible || result.cdnPulling != CdnPullingResult.empty()) {
+            displayCdnPulling(result.cdnPulling, privacyMode)
+            updateTileFromCdn(result.cdnPulling)
+        }
+
+        val icmpHasContent = result.icmpSpoofing.findings.isNotEmpty() ||
+            result.icmpSpoofing.evidence.isNotEmpty() ||
+            result.icmpSpoofing.detected ||
+            result.icmpSpoofing.needsReview ||
+            result.icmpSpoofing.hasError
+        if (cardIcmpSpoofing.isVisible || icmpHasContent) {
+            displayCategory(
+                result.icmpSpoofing,
+                cardIcmpSpoofing,
+                iconIcmpSpoofing,
+                statusIcmpSpoofing,
+                findingsIcmpSpoofing,
+                privacyMode,
+            )
+            updateTileFromCategory(CATEGORY_ICM, result.icmpSpoofing)
         }
     }
 
@@ -3021,18 +3048,7 @@ class MainActivity : AppCompatActivity() {
         textVerdictExplanation.text = narrative.explanation
         textVerdictExplanation.visibility = View.VISIBLE
 
-        val note = narrative.homeRoutedRoamingNote
-        if (note != null) {
-            textVerdictHomeRoutedRoamingNote.text = note
-            textVerdictHomeRoutedRoamingNote.visibility = View.VISIBLE
-            textVerdictHomeRoutedRoamingNote.setTextColor(onSurfaceColor())
-            textVerdictHomeRoutedRoamingNote.setBackgroundResource(
-                R.drawable.bg_verdict_home_routed_roaming_note,
-            )
-        } else {
-            textVerdictHomeRoutedRoamingNote.text = ""
-            textVerdictHomeRoutedRoamingNote.visibility = View.GONE
-        }
+        bindHomeRoutedRoamingNote(narrative.homeRoutedRoamingNote)
 
         verdictDetailsContent.removeAllViews()
         addVerdictSection(
@@ -3053,6 +3069,24 @@ class MainActivity : AppCompatActivity() {
         btnVerdictDetails.visibility = if (hasDetails) View.VISIBLE else View.GONE
         verdictDetailsContent.visibility = if (hasDetails && isVerdictDetailsExpanded) View.VISIBLE else View.GONE
         updateVerdictDetailsButton()
+    }
+
+    private fun bindHomeRoutedRoamingNote(note: String?) {
+        if (note != null) {
+            textVerdictHomeRoutedRoamingNote.text = note
+            textVerdictHomeRoutedRoamingNote.visibility = View.VISIBLE
+            textVerdictHomeRoutedRoamingNote.setTextColor(onSurfaceColor())
+            textVerdictHomeRoutedRoamingNote.setBackgroundResource(
+                R.drawable.bg_verdict_home_routed_roaming_note,
+            )
+            verdictHomeRoutedRoamingNote.text = note
+            verdictHomeRoutedRoamingNote.visibility = View.VISIBLE
+        } else {
+            textVerdictHomeRoutedRoamingNote.text = ""
+            textVerdictHomeRoutedRoamingNote.visibility = View.GONE
+            verdictHomeRoutedRoamingNote.text = ""
+            verdictHomeRoutedRoamingNote.visibility = View.GONE
+        }
     }
 
     private fun addVerdictSection(title: String, content: List<View>) {
@@ -3126,8 +3160,7 @@ class MainActivity : AppCompatActivity() {
         textVerdict.text = ""
         textVerdictExplanation.text = ""
         textVerdictExplanation.visibility = View.GONE
-        textVerdictHomeRoutedRoamingNote.text = ""
-        textVerdictHomeRoutedRoamingNote.visibility = View.GONE
+        bindHomeRoutedRoamingNote(null)
         verdictDetailsDivider.visibility = View.GONE
         btnVerdictDetails.visibility = View.GONE
         btnVerdictDetails.text = getString(R.string.main_verdict_details)
@@ -3494,6 +3527,7 @@ class MainActivity : AppCompatActivity() {
         verdictLabel.text = getString(R.string.verdict_label)
         verdictTitle.text = getString(R.string.verdict_title_idle)
         verdictSubtitle.text = getString(R.string.verdict_subtitle_idle)
+        bindHomeRoutedRoamingNote(null)
     }
 
     private fun bindVerdictHeroRunning() {
@@ -3503,6 +3537,7 @@ class MainActivity : AppCompatActivity() {
         verdictLabel.text = getString(R.string.verdict_label)
         verdictTitle.text = getString(R.string.verdict_title_idle)
         verdictSubtitle.text = getString(R.string.verdict_subtitle_running)
+        bindHomeRoutedRoamingNote(null)
     }
 
     private fun bindVerdictHero(result: CheckResult) {

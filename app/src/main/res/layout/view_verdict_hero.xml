@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/verdictHero"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -112,5 +113,18 @@
             android:layout_marginTop="10dp"
             android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/verdictHomeRoutedRoamingNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_verdict_home_routed_roaming_note"
+            android:padding="10dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="@string/narrative_home_routed_roaming_generic"
+            tools:visibility="visible" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

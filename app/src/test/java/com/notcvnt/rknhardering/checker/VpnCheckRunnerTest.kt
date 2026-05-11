@@ -17,8 +17,10 @@ import com.notcvnt.rknhardering.model.Channel
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
+import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpComparisonResult
+import com.notcvnt.rknhardering.model.LocationSignalsFacts
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.model.TargetGroup
@@ -487,6 +489,80 @@ class VpnCheckRunnerTest {
         assertEquals(1, cdnCalls)
         assertTrue(result.cdnPulling.detected)
         assertTrue(updates.any { it is CheckUpdate.CdnPullingReady })
+    }
+
+    @Test
+    fun `home routed roaming relaxes final cdn and icmp categories`() = runBlocking {
+        val rawCdn = CdnPullingResult(
+            detected = true,
+            needsReview = true,
+            summary = "CDN targets exposed foreign IP",
+            responses = listOf(
+                CdnPullingResponse(
+                    targetLabel = "meduza.io",
+                    url = "https://meduza.io/cdn-cgi/trace",
+                    ip = "203.0.113.64",
+                    ipv4 = "203.0.113.64",
+                ),
+            ),
+            findings = listOf(Finding("meduza.io: IP: 203.0.113.64", detected = true, needsReview = true)),
+        )
+        val rawIcmp = category(
+            name = "icmp",
+            needsReview = true,
+            evidence = listOf(
+                EvidenceItem(
+                    source = EvidenceSource.ICMP_SPOOFING,
+                    detected = true,
+                    confidence = EvidenceConfidence.MEDIUM,
+                    description = "Blocked target replied",
+                ),
+            ),
+        )
+
+        VpnCheckRunner.dependenciesOverride = VpnCheckRunner.Dependencies(
+            geoIpCheck = { _, _ -> category("geo") },
+            ipComparisonCheck = { _, _ -> emptyIpComparison() },
+            cdnPullingCheck = { _, _, _ -> rawCdn },
+            icmpSpoofingCheck = { _, _ -> rawIcmp },
+            directCheck = { _, _ -> category("direct") },
+            indirectCheck = { _, _, _, _ -> category("indirect") },
+            locationCheck = { _, _, _ ->
+                CategoryResult(
+                    name = "location",
+                    detected = false,
+                    findings = listOf(Finding("network_mcc_ru:true")),
+                    locationFacts = LocationSignalsFacts(
+                        networkMcc = "250",
+                        networkIsRussia = true,
+                        homeSimMcc = "208",
+                        homeSimCountryIso = "FR",
+                        homeRoutedRoaming = true,
+                    ),
+                )
+            },
+            nativeCheck = { _ -> category("native") },
+            bypassCheck = { _, _, _, _, _, _, _, _, _, _ ->
+                error("BypassChecker should not run when split tunnel is disabled")
+            },
+        )
+
+        val result = VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = false,
+                networkRequestsEnabled = true,
+                cdnPullingEnabled = true,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        )
+
+        assertFalse(result.cdnPulling.detected)
+        assertFalse(result.cdnPulling.needsReview)
+        assertTrue(result.cdnPulling.findings.none { it.detected || it.needsReview })
+        assertFalse(result.icmpSpoofing.detected)
+        assertFalse(result.icmpSpoofing.needsReview)
+        assertTrue(result.icmpSpoofing.evidence.none { it.detected })
     }
 
     @Test
