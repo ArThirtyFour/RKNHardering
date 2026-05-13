@@ -584,7 +584,7 @@
     <string name="checker_rtt_summary_needs_review">Задержки нестандартные, требуется ручная проверка</string>
     <string name="checker_rtt_summary_inconclusive">Не удалось определить домашнюю страну</string>
     <string name="checker_rtt_summary_unsupported_country">RTT-триангуляция в этой сборке поддерживает только РФ</string>
-    <string name="checker_rtt_summary_unavailable">Замеры RTT недоступны</string>
+    <string name="checker_rtt_summary_unavailable">Замеры RTT недоступны или недостоверны</string>
     <string name="checker_rtt_target_home">Локальный</string>
     <string name="checker_rtt_target_foreign">Зарубежный</string>
     <string name="checker_rtt_evidence_template">%1$s — %2$.0f мс (jitter %3$.0f мс)</string>

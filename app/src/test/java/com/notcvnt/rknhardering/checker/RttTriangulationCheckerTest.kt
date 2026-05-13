@@ -149,6 +149,7 @@ class RttTriangulationCheckerTest {
 
         assertFalse(result.detected)
         assertTrue(result.needsReview)
+        assertTrue(result.hasError)
         assertTrue(result.findings.any { "unavailable" in it.description })
     }
 
@@ -165,6 +166,80 @@ class RttTriangulationCheckerTest {
 
         assertFalse(result.detected)
         assertTrue(result.findings.any { "RU only" in it.description })
+    }
+
+    @Test
+    fun `foreign_unreachable_does_not_detect_tunnel`() = runBlocking {
+        val ruHosts = setOf("yandex.ru", "mail.ru", "vk.com", "sberbank.ru", "gosuslugi.ru")
+        RttTriangulationChecker.dependenciesOverride = RttTriangulationChecker.Dependencies(
+            resolveIpv4 = { host, _ ->
+                if (host in ruHosts) "10.0.1.1" else "198.18.0.1"
+            },
+            ping = { address, _ ->
+                if (address == "10.0.1.1") {
+                    makePingResult(received = 3, avg = 150.0, min = 145.0, max = 155.0)
+                } else {
+                    makePingResult(received = 0)
+                }
+            },
+        )
+
+        val result = RttTriangulationChecker.check(
+            context = context,
+            resolverConfig = DnsResolverConfig.system(),
+            geoFacts = ruGeoFacts,
+        )
+
+        assertFalse(result.detected)
+        assertTrue(result.needsReview)
+        assertTrue(result.hasError)
+        assertTrue(result.findings.first().isError)
+        assertTrue(
+            result.findings.any {
+                "Foreign facebook.com (198.18.0.1): unreachable" in it.description
+            },
+        )
+    }
+
+    @Test
+    fun `single_foreign_sample_is_unreliable_error`() = runBlocking {
+        val ruHosts = setOf("yandex.ru", "mail.ru", "vk.com", "sberbank.ru", "gosuslugi.ru")
+        RttTriangulationChecker.dependenciesOverride = RttTriangulationChecker.Dependencies(
+            resolveIpv4 = { host, _ ->
+                when {
+                    host in ruHosts -> "10.0.1.1"
+                    host == "facebook.com" -> "10.0.2.1"
+                    else -> "10.0.2.2"
+                }
+            },
+            ping = { address, _ ->
+                when {
+                    address == "10.0.1.1" -> makePingResult(
+                        received = 3,
+                        avg = 150.0,
+                        min = 145.0,
+                        max = 155.0,
+                    )
+                    address == "10.0.2.1" -> makePingResult(
+                        received = 3,
+                        avg = 30.0,
+                        min = 25.0,
+                        max = 35.0,
+                    )
+                    else -> makePingResult(received = 0)
+                }
+            },
+        )
+
+        val result = RttTriangulationChecker.check(
+            context = context,
+            resolverConfig = DnsResolverConfig.system(),
+            geoFacts = ruGeoFacts,
+        )
+
+        assertFalse(result.detected)
+        assertTrue(result.needsReview)
+        assertTrue(result.hasError)
     }
 
     // Helpers

@@ -288,7 +288,7 @@
     <string name="checker_rtt_summary_needs_review">延迟异常但无法确定</string>
     <string name="checker_rtt_summary_inconclusive">无法确定主国家</string>
     <string name="checker_rtt_summary_unsupported_country">本版本仅支持俄罗斯</string>
-    <string name="checker_rtt_summary_unavailable">RTT 探测不可用</string>
+    <string name="checker_rtt_summary_unavailable">RTT 探测不可用或不可靠</string>
     <string name="checker_rtt_target_home">本地</string>
     <string name="checker_rtt_target_foreign">境外</string>
     <string name="checker_rtt_evidence_template">%1$s — %2$.0f 毫秒 (抖动 %3$.0f 毫秒)</string>

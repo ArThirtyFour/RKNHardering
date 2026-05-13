@@ -27,6 +27,7 @@ internal object RttTriangulationChecker {
     private const val PING_COUNT = 4
     private const val THRESHOLD_HOME_MS = 80.0
     private const val JITTER_LIMIT_MS = 60.0
+    private const val MIN_REACHABLE_TARGETS_PER_GROUP = 2
 
     private val RU_TARGETS = listOf(
         "yandex.ru",
@@ -162,41 +163,50 @@ internal object RttTriangulationChecker {
 
         val homeMedian = median(ruOutcomes.mapNotNull { it.medianRtt })
         val foreignMedian = median(foreignOutcomes.mapNotNull { it.medianRtt })
+        val homeReachableCount = ruOutcomes.count { it.medianRtt != null }
+        val foreignReachableCount = foreignOutcomes.count { it.medianRtt != null }
+        val insufficientSamples = homeReachableCount < MIN_REACHABLE_TARGETS_PER_GROUP ||
+            foreignReachableCount < MIN_REACHABLE_TARGETS_PER_GROUP
 
         val allReachable = outcomes.filter { it.medianRtt != null }
         val highJitterCount = allReachable.count { it.jitter != null && it.jitter > JITTER_LIMIT_MS }
         val highJitterMajority = allReachable.isNotEmpty() &&
             highJitterCount.toDouble() / allReachable.size > 0.5
 
-        val (detected, baseConfidence, needsReview, descriptionKey) = when {
-            homeMedian == null && foreignMedian == null -> Quadruple(
-                first = false,
-                second = EvidenceConfidence.MEDIUM,
-                third = true,
-                fourth = R.string.checker_rtt_summary_unavailable,
-            )
-            homeMedian != null &&
-                homeMedian > THRESHOLD_HOME_MS &&
-                (foreignMedian == null || homeMedian > foreignMedian) -> Quadruple(
-                first = true,
-                second = EvidenceConfidence.MEDIUM,
-                third = true,
-                fourth = R.string.checker_rtt_summary_detected,
+        val (detected, baseConfidence, needsReview, descriptionKey, isError) = when {
+            insufficientSamples -> RttDecision(
+                detected = false,
+                confidence = EvidenceConfidence.LOW,
+                needsReview = true,
+                descriptionKey = R.string.checker_rtt_summary_unavailable,
+                isError = true,
             )
             homeMedian != null &&
                 homeMedian > THRESHOLD_HOME_MS &&
                 foreignMedian != null &&
-                homeMedian <= foreignMedian -> Quadruple(
-                first = false,
-                second = EvidenceConfidence.LOW,
-                third = true,
-                fourth = R.string.checker_rtt_summary_needs_review,
+                homeMedian > foreignMedian -> RttDecision(
+                detected = true,
+                confidence = EvidenceConfidence.MEDIUM,
+                needsReview = true,
+                descriptionKey = R.string.checker_rtt_summary_detected,
+                isError = false,
             )
-            else -> Quadruple(
-                first = false,
-                second = EvidenceConfidence.MEDIUM,
-                third = false,
-                fourth = R.string.checker_rtt_summary_clean,
+            homeMedian != null &&
+                homeMedian > THRESHOLD_HOME_MS &&
+                foreignMedian != null &&
+                homeMedian <= foreignMedian -> RttDecision(
+                detected = false,
+                confidence = EvidenceConfidence.LOW,
+                needsReview = true,
+                descriptionKey = R.string.checker_rtt_summary_needs_review,
+                isError = false,
+            )
+            else -> RttDecision(
+                detected = false,
+                confidence = EvidenceConfidence.MEDIUM,
+                needsReview = false,
+                descriptionKey = R.string.checker_rtt_summary_clean,
+                isError = false,
             )
         }
 
@@ -206,6 +216,7 @@ internal object RttTriangulationChecker {
             description = context.getString(descriptionKey),
             detected = detected,
             needsReview = needsReview,
+            isError = isError,
             source = EvidenceSource.RTT_TRIANGULATION,
             confidence = finalConfidence,
         )
@@ -319,10 +330,11 @@ internal object RttTriangulationChecker {
         EvidenceConfidence.LOW -> EvidenceConfidence.LOW
     }
 
-    private data class Quadruple(
-        val first: Boolean,
-        val second: EvidenceConfidence,
-        val third: Boolean,
-        val fourth: Int,
+    private data class RttDecision(
+        val detected: Boolean,
+        val confidence: EvidenceConfidence,
+        val needsReview: Boolean,
+        val descriptionKey: Int,
+        val isError: Boolean,
     )
 }
