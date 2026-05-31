@@ -5,9 +5,31 @@
 <a href="https://matrix.to/#/%23RKN_Hardering:matrix.kangel.tech"><img src="https://img.shields.io/badge/matrix-%23000000?style=for-the-badge&logo=matrix&logoColor=white" alt="Matrix" width="200"></a>
 <a href="https://t.me/RKNHardering"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" width="200"></a>
 
+
+
 برنامه Android برای شناسایی VPN و proxy روی دستگاه. این پروژه روش مبتنی بر منطق روس‌کومنادزور برای تشخیص ابزارهای دور زدن مسدودسازی را پیاده‌سازی می‌کند.
 
 حداقل نسخه Android: 8.0 (API 26).
+
+می‌توانید پروژه را از اینجا دانلود کنید:
+<table>
+  <tr>
+    <th align="center">GitHub</th>
+    <th align="center">F-Droid</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/xtclovver/RKNHardering/releases/latest">
+        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://f-droid.org/en/packages/com.notcvnt.rknhardering/">
+        <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Download from F-Droid" height="75">
+      </a>
+    </td>
+  </tr>
+</table>
 
 ## به کمک جامعه نیاز داریم / Community Help Wanted
 
