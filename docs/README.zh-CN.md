@@ -9,6 +9,27 @@
 
 最低 Android 版本：8.0（API 26）。
 
+您可以从以下位置下载本项目：
+<table>
+  <tr>
+    <th align="center">GitHub</th>
+    <th align="center">F-Droid</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/xtclovver/RKNHardering/releases/latest">
+        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://f-droid.org/en/packages/com.notcvnt.rknhardering/">
+        <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Download from F-Droid" height="75">
+      </a>
+    </td>
+  </tr>
+</table>
+
+
 ## 需要社区帮助 / Community Help Wanted
 
 本项目记录了在 Android 设备上检测 VPN 和代理的方法。然而，**反向问题**——如何防止 VPN 被检测到——的研究还远不够充分。

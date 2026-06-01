@@ -9,6 +9,26 @@ Android app for detecting VPNs and proxies on a device. Implements the Roskomnad
 
 Minimum Android version: 8.0 (API 26).
 
+You can download the project from:
+<table>
+  <tr>
+    <th align="center">GitHub</th>
+    <th align="center">F-Droid</th>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/xtclovver/RKNHardering/releases/latest">
+        <img src="https://github.com/machiav3lli/oandbackupx/blob/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png" alt="Download from GitHub" height="75">
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://f-droid.org/en/packages/com.notcvnt.rknhardering/">
+        <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Download from F-Droid" height="75">
+      </a>
+    </td>
+  </tr>
+</table>
+
 ## Community Help Wanted
 
 This project documents methods for detecting VPNs and proxies on Android devices. However, **the inverse problem** how to prevent the detection of an active VPN has been studied much less thoroughly.
