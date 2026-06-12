@@ -225,6 +225,28 @@ class NativeSignsCheckerTest {
     }
 
     @Test
+    fun `kernel local route for interface own address does not emit evidence`() {
+        // Reproduces issue #78: ccmni1 cellular interface with a public-range address
+        // (12.233.114.164/8) produces a kernel-managed /32 entry in the local table.
+        // dst == prefsrc, type=local, scope=host — this is the interface's own address,
+        // not a VPN server host-route leak.
+        val localOwnAddress = NativeRouteEntry(
+            interfaceName = "ccmni1", destinationHex = "0CE972A4", gatewayHex = "00000000",
+            flags = 0, isDefault = false, source = NativeRouteEntry.RouteSource.NETLINK,
+            family = 2, destination = "12.233.114.164", prefSrc = "12.233.114.164",
+            scope = "host", type = "local", table = 255, prefixLen = 32,
+        )
+        val broadcastEntry = NativeRouteEntry(
+            interfaceName = "ccmni1", destinationHex = "0CFFFFFF", gatewayHex = "00000000",
+            flags = 0, isDefault = false, source = NativeRouteEntry.RouteSource.NETLINK,
+            family = 2, destination = "12.255.255.255", scope = "link",
+            type = "broadcast", table = 255, prefixLen = 32,
+        )
+        val outcome = NativeSignsChecker.evaluateHostRoutes(context, listOf(localOwnAddress, broadcastEntry))
+        assertFalse(outcome.detected)
+    }
+
+    @Test
     fun `interface with tuntap type and nonstandard name emits NATIVE_INTERFACE evidence`() {
         val ifaces = listOf(
             NativeInterface(

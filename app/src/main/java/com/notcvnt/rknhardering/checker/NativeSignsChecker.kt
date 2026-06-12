@@ -492,6 +492,7 @@ object NativeSignsChecker {
                 !route.isDefault &&
                 (route.prefixLen == 32 || route.prefixLen == 128) &&
                 route.destination != null &&
+                !isKernelManagedLocalRoute(route) &&
                 isPublicRoutableAddress(route.destination) &&
                 NetworkInterfacePatterns.isStandardInterface(route.interfaceName)
         }
@@ -518,6 +519,27 @@ object NativeSignsChecker {
         }
 
         return PartialOutcome(findings, evidence, detected = detected)
+    }
+
+    /**
+     * Excludes kernel-managed entries from the `local` routing table, which the kernel
+     * auto-creates for every configured interface address (issue #78). These are NOT
+     * VPN host-route leaks:
+     *  - `type=local` (the interface's own address) / `broadcast` / `anycast` / `multicast`
+     *  - `scope=host` (the route never leaves the box)
+     *  - `dst == prefsrc` (route destination equals the interface's own source address)
+     * A genuine VPN server host-route leak is a `unicast` route to a *foreign* public IP
+     * (dst != prefsrc) in the main/policy tables.
+     */
+    internal fun isKernelManagedLocalRoute(route: NativeRouteEntry): Boolean {
+        when (route.type?.lowercase()) {
+            "local", "broadcast", "anycast", "multicast" -> return true
+        }
+        if (route.scope?.lowercase() == "host") return true
+        val dst = route.destination
+        val src = route.prefSrc
+        if (dst != null && src != null && dst == src) return true
+        return false
     }
 
     internal fun isPublicRoutableAddress(addr: String): Boolean {
